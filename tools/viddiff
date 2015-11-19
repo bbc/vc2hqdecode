@@ -1,0 +1,30 @@
+#!/usr/bin/python
+
+def DIFF(l, *args):
+    return [ (args[0][x] - args[1][x])/2 + 0x8000 for x in range(0, l*2) ]
+
+if __name__ == "__main__":
+    import argparse
+    import struct
+
+    parser = argparse.ArgumentParser(description='VC2 Stream debugging tool.')
+    parser.add_argument('infilename', metavar='filename', type=str, nargs=2,
+                    help='input 16p2 files')
+    parser.add_argument('outfilename', metavar='outfilename', type=str, default="diff.16p2", nargs='?',
+                    help='input 16p2 files')
+
+    parser.add_argument('--width', metavar='width', type=int, default=1920,
+                        help='image width (default: 1920)')
+    parser.add_argument('--height', metavar='height', type=int, default=1080,
+                        help='image height (default: 1080)')
+
+    args = parser.parse_args()
+
+    f = [ open(x, "r") for x in args.infilename ]
+    data = [ x.read() for x in f ]
+    data = [ struct.unpack(">" + ("H"*(len(x)/2)), x) for x in data ]
+
+    diff = DIFF(args.width*args.height, *data)
+    f = open(args.outfilename, "w")
+
+    f.write(struct.pack(">" + ("H"*(len(diff))), *diff))

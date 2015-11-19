@@ -1,0 +1,21 @@
+# Contributors to vc2hqdecode
+# 
+# The format of this file was inspired by the x264 AUTHORS file which was
+# inspired by the Linux kernel CREDITS file.
+# Authors are listed alphabetically.
+# 
+# The fields are: name (N), email (E), web-address (W), CVS account login (C),
+# PGP key ID and fingerprint (P), description (D), and snail-mail address (S).
+
+N: James P. Weaver
+E: james.barrett@bbc.co.uk
+D: Maintainer
+D: Overall Library Structure
+D: Runtime Code Selection
+D: Slicing
+D: Entropy Decoding
+D: Inverse Wavelet Transform
+D: Output
+D: Test Program
+D: Windows Port
+S: BBC R&D, 5th Floor, Dock House, MediaCity UK, Manchester, M50 2LH, United Kingdom

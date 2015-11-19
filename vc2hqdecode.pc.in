@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@/vc2hqdecode-@VC2HQDECODE_MAJORMINOR@
+toolsdir=${exec_prefix}/bin
+
+
+Name: vc2hqdecode-@VC2HQDECODE_MAJORMINOR@
+Description: Decode Library for VC2 High Quality Profile
+Requires.private: @VC2HQDECODE_PKG_DEPS@
+Version: @VERSION@
+Libs: -L${libdir} -lvc2hqdecode-@VC2HQDECODE_MAJORMINOR@
+Cflags: -I${includedir}

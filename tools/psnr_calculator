@@ -1,0 +1,59 @@
+#!/usr/bin/python
+
+#*****************************************************************************
+#* psnr_calculator: A simple utility that calculates PSNR for images in 16p2
+#*                  format.
+#*****************************************************************************
+#* Copyright (C) 2014-2015 BBC
+#*
+#* Authors: James P. Weaver <james.barrett@bbc.co.uk>
+#*
+#* This program is free software; you can redistribute it and/or modify
+#* it under the terms of the GNU General Public License as published by
+#* the Free Software Foundation; either version 2 of the License, or
+#* (at your option) any later version.
+#*
+#* This program is distributed in the hope that it will be useful,
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#* GNU General Public License for more details.
+#*
+#* You should have received a copy of the GNU General Public License
+#* along with this program; if not, write to the Free Software
+#* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02111, USA.
+#*
+#* This program is also available under a commercial proprietary license.
+#* For more information, contact us at ipstudio@bbc.co.uk.
+#*****************************************************************************
+
+from math import log10
+
+def PSNR(N, A,B):
+    mse = 0
+    for n in range(0, N):
+        mse += ((A[n] >> 6) - (B[n] >> 6))*((A[n] >> 6) - (B[n] >> 6))
+    mse /= N
+    psnr = 20*log10(0x3FF) - 10*log10(mse)
+    return psnr
+
+if __name__ == "__main__":
+    import argparse
+    import struct
+
+    parser = argparse.ArgumentParser(description='VC2 Stream debugging tool.')
+    parser.add_argument('infilename', metavar='filename', type=str, nargs=2,
+                    help='input 16p2 files')
+
+    parser.add_argument('--width', metavar='width', type=int, default=1920,
+                        help='image width (default: 1920)')
+    parser.add_argument('--height', metavar='height', type=int, default=1080,
+                        help='image height (default: 1080)')
+
+    args = parser.parse_args()
+
+    f = [ open(x, "r") for x in args.infilename ]
+    data = [ x.read() for x in f ]
+    data = [ struct.unpack(">" + ("H"*(len(x)/2)), x) for x in data ]
+
+    psnr = PSNR(args.width*args.height, *data)
+    print "PSNR: %f" % psnr
