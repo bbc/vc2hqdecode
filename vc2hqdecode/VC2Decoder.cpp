@@ -1211,7 +1211,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
 	job->odata[2] = (char *)(_odata[2] + job->target_y[2] * job->ostride[2] + job->target_x[2]);
 
 #ifdef DEBUG_P_BLOCK
-<<<<<<< 5152074d8514488d46d09552585d0a9f38b3590e
   if (job->number == DEBUG_P_JOB) {
     printf("-----------------------------------------------------------------\n");
     printf("Dequantised\n");
@@ -1219,21 +1218,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
     __debug_print_slice(job, mSampleSize);
     printf("-----------------------------------------------------------------\n");
   }
-=======
-	if (job->number == DEBUG_P_JOB) {
-		printf("-----------------------------------------------------------------\n");
-		printf("Dequantised\n");
-		printf("-----------------------------------------------------------------\n");
-		for (int y = DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H; y < DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H + DEBUG_P_SLICE_H; y++) {
-			int32_t *D = &job->video_data[DEBUG_P_COMP]->data[y*job->video_data[DEBUG_P_COMP]->stride + DEBUG_P_SLICE_X*DEBUG_P_SLICE_W];
-			printf("  ");
-			for (int x = 0; x < DEBUG_P_SLICE_W; x++)
-				printf("%+6d ", D[x]);
-			printf("\n");
-		}
-		printf("-----------------------------------------------------------------\n");
-	}
->>>>>>> Added code to detect CPU features on Windows
 #endif
 	int C = mParams.colourise ? 1 : 3;
 	for (int c = 0; c < C; c++) {
@@ -1245,7 +1229,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
 				job->video_data[c]->height);
 
 #ifdef DEBUG_P_BLOCK
-<<<<<<< 5152074d8514488d46d09552585d0a9f38b3590e
       if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
         printf("-----------------------------------------------------------------\n");
         printf("Transform V%d\n", l);
@@ -1253,21 +1236,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
         __debug_print_slice(job, mSampleSize);
         printf("-----------------------------------------------------------------\n");
       }
-=======
-			if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
-				printf("-----------------------------------------------------------------\n");
-				printf("Transform V%d\n", l);
-				printf("-----------------------------------------------------------------\n");
-				for (int y = DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H; y < DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H + DEBUG_P_SLICE_H; y++) {
-					int32_t *D = &job->video_data[DEBUG_P_COMP]->data[y*job->video_data[DEBUG_P_COMP]->stride + DEBUG_P_SLICE_X*DEBUG_P_SLICE_W];
-					printf("  ");
-					for (int x = 0; x < DEBUG_P_SLICE_W; x++)
-						printf("%+6d ", D[x]);
-					printf("\n");
-				}
-				printf("-----------------------------------------------------------------\n");
-			}
->>>>>>> Added code to detect CPU features on Windows
 #endif
 
 			transforms_h[l](job->video_data[c]->data,
@@ -1276,7 +1244,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
 				job->video_data[c]->height);
 
 #ifdef DEBUG_P_BLOCK
-<<<<<<< 5152074d8514488d46d09552585d0a9f38b3590e
       if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
         printf("-----------------------------------------------------------------\n");
         printf("Transform H%d\n", l);
@@ -1284,21 +1251,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
         __debug_print_slice(job, mSampleSize);
         printf("-----------------------------------------------------------------\n");
       }
-=======
-			if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
-				printf("-----------------------------------------------------------------\n");
-				printf("Transform H%d\n", l);
-				printf("-----------------------------------------------------------------\n");
-				for (int y = DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H; y < DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H + DEBUG_P_SLICE_H; y++) {
-					int32_t *D = &job->video_data[DEBUG_P_COMP]->data[y*job->video_data[DEBUG_P_COMP]->stride + DEBUG_P_SLICE_X*DEBUG_P_SLICE_W];
-					printf("  ");
-					for (int x = 0; x < DEBUG_P_SLICE_W; x++)
-						printf("%+6d ", D[x]);
-					printf("\n");
-				}
-				printf("-----------------------------------------------------------------\n");
-			}
->>>>>>> Added code to detect CPU features on Windows
 #endif
 		}
 
@@ -1309,7 +1261,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
 				job->video_data[c]->height);
 
 #ifdef DEBUG_P_BLOCK
-<<<<<<< 5152074d8514488d46d09552585d0a9f38b3590e
       if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
         printf("-----------------------------------------------------------------\n");
         printf("Transform V%d\n", l);
@@ -1317,21 +1268,6 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
         __debug_print_slice(job, mSampleSize);
         printf("-----------------------------------------------------------------\n");
       }
-=======
-			if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
-				printf("-----------------------------------------------------------------\n");
-				printf("Transform V%d\n", l);
-				printf("-----------------------------------------------------------------\n");
-				for (int y = DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H; y < DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H + DEBUG_P_SLICE_H; y++) {
-					int32_t *D = &job->video_data[DEBUG_P_COMP]->data[y*job->video_data[DEBUG_P_COMP]->stride + DEBUG_P_SLICE_X*DEBUG_P_SLICE_W];
-					printf("  ");
-					for (int x = 0; x < DEBUG_P_SLICE_W; x++)
-						printf("%+6d ", D[x]);
-					printf("\n");
-				}
-				printf("-----------------------------------------------------------------\n");
-			}
->>>>>>> Added code to detect CPU features on Windows
 #endif
 
 			transforms_final(job->video_data[c]->data,
