@@ -68,7 +68,7 @@ inline FILE *FOPEN(const char *fname, const char *mode) {
 
 void usage() {
   printf("Usage: vc2decode [options] input_file [output_file]\n");
-  printf("  By default the output file will be the input file with .16p2 appended\n");
+  printf("  By default the output file will be the input file with .yuv appended\n");
   printf("  All short program options must have a space between them and their parameter\n");
 }
 
@@ -121,7 +121,7 @@ int main (int argc, char *argv[]) {
   std::string input_filename  = std::string(*(argv_unhandled_it++));
   std::string output_filename;
   if (argv_unhandled_it == argv_unhandled.end())
-    output_filename = input_filename + ".16p2";
+    output_filename = input_filename + ".yuv";
   else
     output_filename = std::string(*(argv_unhandled_it++));
 
@@ -382,30 +382,6 @@ int main (int argc, char *argv[]) {
       FILE *of = FOPEN(output_filename.c_str(), "wb");
 
       for (int i = 0; i < num_frames_decoded_from_sequence; i++) {
-        for (int y = 0; y < fmt.height; y++) {
-          for (int x = 0; x < fmt.width; x++) {
-            const int n = y*fmt.width + x;
-            uint16_t X = ((uint16_t *)odata[i])[n] << 6;
-            ((uint8_t *)odata[i])[2*n    ] = X >> 8;
-            ((uint8_t *)odata[i])[2*n + 1] = X&0xFF;
-          }
-        }
-        for (int y = 0; y < fmt.height; y++) {
-          for (int x = 0; x < fmt.width/2; x++) {
-            const int n = fmt.height*fmt.width + y*fmt.width/2 + x;
-            uint16_t X = ((uint16_t *)odata[i])[n] << 6;
-            ((uint8_t *)odata[i])[2*n    ] = X >> 8;
-            ((uint8_t *)odata[i])[2*n + 1] = X&0xFF;
-          }
-        }
-        for (int y = 0; y < fmt.height; y++) {
-          for (int x = 0; x < fmt.width/2; x++) {
-            const int n = fmt.height*fmt.width + fmt.height*fmt.width/2 + y*fmt.width/2 + x;
-            uint16_t X = ((uint16_t *)odata[i])[n] << 6;
-            ((uint8_t *)odata[i])[2*n    ] = X >> 8;
-            ((uint8_t *)odata[i])[2*n + 1] = X&0xFF;
-          }
-        }
 
         for (int y = 0; y < fmt.height; y++) {
           size_t s = fwrite(&odata[i][(y*fmt.width)], 1, fmt.width*sizeof(uint16_t), of);

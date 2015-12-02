@@ -33,6 +33,10 @@ command line options exist, a help message can be extracted via:
 
   ./testprogs/vc2decode --help
 
+Output format is raw planar 10-bit 4:2:2 video with active bits in the least 
+significant 10-bits of each little-endian 16-bit word (ie. FFMPEG format 
+yuv422p10le).
+
 
 
 WINDOWS
