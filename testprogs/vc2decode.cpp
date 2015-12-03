@@ -70,6 +70,7 @@ void usage() {
   printf("Usage: vc2decode [options] input_file [output_file]\n");
   printf("  By default the output file will be the input file with .yuv appended\n");
   printf("  All short program options must have a space between them and their parameter\n");
+  printf("  All program options must have a parameter, eg. -v 1\n");
 }
 
 void print_sequence_info(VC2DecoderSequenceInfo &info, bool verbose);
@@ -91,7 +92,7 @@ int main (int argc, char *argv[]) {
   po::Options opts;
   opts.addOptions()
     ("help,h",              help,                false, "produce help message")
-    ("verbose,v",           verbose,             false, "verbose output")
+    ("verbose,v",           verbose,             false, "level of verbosity (default 0)")
     ("num-frames,n",        num_frames,          1,     "number of frames to encode")
     ("threads,t",           threads,             1,     "number of threads (default 1)")
     ("disable-output",      disable_output,      false, "disable output")
