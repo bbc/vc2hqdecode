@@ -34,8 +34,6 @@
 #include <string>
 #include <list>
 
-#include "program_options_lite.h"
-
 #ifdef _WIN32
 #include <Windows.h>
 
@@ -66,65 +64,64 @@ inline FILE *FOPEN(const char *fname, const char *mode) {
 #define FOPEN fopen
 #endif
 
+#include "tclap/CmdLine.h"
+
 void usage() {
   printf("Usage: vc2decode [options] input_file [output_file]\n");
   printf("  By default the output file will be the input file with .yuv appended\n");
-  printf("  All short program options must have a space between them and their parameter\n");
-  printf("  All program options must have a parameter, eg. -v 1\n");
 }
 
 void print_sequence_info(VC2DecoderSequenceInfo &info, bool verbose);
 
 int main (int argc, char *argv[]) {
   /* Program Option parsing */
-  namespace po = df::program_options_lite;
 
-  int num_frames;
-  int threads;
-  bool disable_output;
-  bool colourise_quantiser;
-  bool colourise_padding;
-  bool colourise_unpadded;
-  bool quartersize;
-  bool help;
-  bool verbose;
-  
-  po::Options opts;
-  opts.addOptions()
-    ("help,h",              help,                false, "produce help message")
-    ("verbose,v",           verbose,             false, "level of verbosity (default 0)")
-    ("num-frames,n",        num_frames,          1,     "number of frames to encode")
-    ("threads,t",           threads,             1,     "number of threads (default 1)")
-    ("disable-output",      disable_output,      false, "disable output")
-    ("colourise-quantiser", colourise_quantiser, false, "colourise based on quantiser levels")
-    ("colourise-padding",   colourise_padding,   false, "colourise based on padding levels")
-    ("colourise-unpadded",  colourise_unpadded,  false, "colourise based on lack of padding")
-    ("quartersize",         quartersize,         false, "decode only one quarter")
-    ;
+  int num_frames = 1;
+  int threads = 1;
+  bool disable_output = false;
+  bool colourise_quantiser = false;
+  bool colourise_padding = false;
+  bool colourise_unpadded = false;
+  bool quartersize = false;
+  bool verbose = false;
 
-  po::setDefaults(opts);
-  const std::list<const char*>& argv_unhandled = po::scanArgv(opts, argc, (const char**) argv);
-  std::list<const char*>::const_iterator argv_unhandled_it = argv_unhandled.begin();
-
-  if (help) {
-    usage();
-    po::doHelp(std::cout, opts, 81);
-    return 0;
-  }
-
-  if (argv_unhandled_it == argv_unhandled.end()) {
-    printf("Error: No input file specified\n");
-    usage();
-    po::doHelp(std::cout, opts, 81);
-    return 1;
-  }
-
-  std::string input_filename  = std::string(*(argv_unhandled_it++));
+  std::string input_filename;
   std::string output_filename;
-  if (argv_unhandled_it == argv_unhandled.end())
+
+  try {
+    TCLAP::CmdLine cmd("VC2 HQ profile Decoder Example\n"
+                       "All input files must be vc2 streams\n"
+                       "All output files will be yuv422p10le\n", '=', "0.1", true);
+
+    TCLAP::SwitchArg     verbose_arg             ("v", "verbose",        "verbose mode",                                    cmd, false);
+    TCLAP::ValueArg<int> num_frames_arg          ("n", "num-frames",     "Number of frames to decode", false, 1, "integer", cmd);
+    TCLAP::ValueArg<int> num_threads_arg         ("t", "threads",        "Number of threads",          false, 1, "integer", cmd);
+    TCLAP::SwitchArg     disable_output_args     ("d", "disable-output",      "disable output",                                  cmd, false);
+    TCLAP::SwitchArg     colourise_quantiser_args("q", "colourise-quantiser", "colourise based on quantiser levels",             cmd, false);
+    TCLAP::SwitchArg     colourise_padding_args  ("p", "colourise-padding", "colourise based on padding levels",               cmd, false);
+    TCLAP::SwitchArg     colourise_unpadded_args ("u", "colourise-unpedded", "colourise based on lack of padding",              cmd, false);
+    
+    TCLAP::UnlabeledValueArg<std::string> input_file_arg("input_file",   "encoded input file",         true, "", "string",  cmd);
+    TCLAP::UnlabeledValueArg<std::string> output_file_arg("output_file", "output file (defaults to input file + .yuv)", false, "", "string", cmd);
+
+    cmd.parse( argc, argv );
+
+    num_frames          = num_frames_arg.getValue();
+    threads             = num_threads_arg.getValue();
+    disable_output      = disable_output_args.getValue();
+    colourise_quantiser = colourise_quantiser_args.getValue();
+    colourise_padding   = colourise_padding_args.getValue();
+    colourise_unpadded  = colourise_unpadded_args.getValue();
+    verbose             = verbose_arg.getValue();
+
+    input_filename = input_file_arg.getValue();
+    output_filename = output_file_arg.getValue();
+  } catch (TCLAP::ArgException &e) {
+    std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; return 1;
+  }
+
+  if (output_filename == "")
     output_filename = input_filename + ".yuv";
-  else
-    output_filename = std::string(*(argv_unhandled_it++));
 
   /* Variables for storing input and output buffers */
   char *idata;
@@ -181,6 +178,11 @@ int main (int argc, char *argv[]) {
   /* Read input data */
   {
     FILE *f = FOPEN(input_filename.c_str(), "rb");
+    if (!f) {
+      fprintf(stderr, "Could not open: %s\n", input_filename.c_str());
+      perror("Invalid input file: ");
+      return 1;
+    }
     int r = fseek(f, 0L, SEEK_END);
     if (r < 0) {
       perror("Error seeking in input file");
