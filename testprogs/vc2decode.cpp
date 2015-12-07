@@ -99,7 +99,7 @@ int main (int argc, char *argv[]) {
     TCLAP::SwitchArg     disable_output_args     ("d", "disable-output",      "disable output",                                  cmd, false);
     TCLAP::SwitchArg     colourise_quantiser_args("q", "colourise-quantiser", "colourise based on quantiser levels",             cmd, false);
     TCLAP::SwitchArg     colourise_padding_args  ("p", "colourise-padding", "colourise based on padding levels",               cmd, false);
-    TCLAP::SwitchArg     colourise_unpadded_args ("u", "colourise-unpedded", "colourise based on lack of padding",              cmd, false);
+    TCLAP::SwitchArg     colourise_unpadded_args ("u", "colourise-unpadded", "colourise based on lack of padding",              cmd, false);
     
     TCLAP::UnlabeledValueArg<std::string> input_file_arg("input_file",   "encoded input file",         true, "", "string",  cmd);
     TCLAP::UnlabeledValueArg<std::string> output_file_arg("output_file", "output file (defaults to input file + .yuv)", false, "", "string", cmd);
