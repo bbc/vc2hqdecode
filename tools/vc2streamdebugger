@@ -94,19 +94,20 @@ def parse_info(stream, offset):
             if prev_next != data["prev_parse_offset"]:
                 data["prev_parse_offset_error"] = "Offsets do not match"
         if (data["next_parse_offset"] != 0):
-            if data["next_parse_offset"] + offset > len(stream):
+            if data["next_parse_offset"] + offset + 12 >= len(stream):
                 data["next_parse_offset_error"] = "Overrun"
-            if (stream[offset + data["next_parse_offset"] + 0] != 0x42 or
-                stream[offset + data["next_parse_offset"] + 1] != 0x42 or
-                stream[offset + data["next_parse_offset"] + 2] != 0x43 or
-                stream[offset + data["next_parse_offset"] + 3] != 0x44):
-                data["next_parse_offset_error"] = "No parse info header at next location"
-            next_prev = ((stream[offset + data["next_parse_offset"] + 9] << 24) |
-                         (stream[offset + data["next_parse_offset"] + 10] << 16) |
-                         (stream[offset + data["next_parse_offset"] + 11] <<  8) |
-                         (stream[offset + data["next_parse_offset"] + 12] <<  0))
-            if next_prev != data["next_parse_offset"]:
-                data["next_parse_offset_error"] = "Offsets do not match"
+            else:
+                if (stream[offset + data["next_parse_offset"] + 0] != 0x42 or
+                    stream[offset + data["next_parse_offset"] + 1] != 0x42 or
+                    stream[offset + data["next_parse_offset"] + 2] != 0x43 or
+                    stream[offset + data["next_parse_offset"] + 3] != 0x44):
+                    data["next_parse_offset_error"] = "No parse info header at next location"
+                next_prev = ((stream[offset + data["next_parse_offset"] + 9] << 24) |
+                            (stream[offset + data["next_parse_offset"] + 10] << 16) |
+                            (stream[offset + data["next_parse_offset"] + 11] <<  8) |
+                    (stream[offset + data["next_parse_offset"] + 12] <<  0))
+                if next_prev != data["next_parse_offset"]:
+                    data["next_parse_offset_error"] = "Offsets do not match"
         return data
     return None
 

@@ -615,8 +615,17 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
 	mHeight = mVideoFormat.frame_height;
 	if (mInterlaced) mHeight /= 2;
 
-	int slice_width = ((mWidth + params.transform_params.slices_x - 1) / params.transform_params.slices_x);
-	int slice_height = ((mHeight + params.transform_params.slices_y - 1) / params.transform_params.slices_y);
+  int padded_width  = (mWidth  + ( 1 << mParams.transform_params.wavelet_depth ) - 1)/( 1 << mParams.transform_params.wavelet_depth )*( 1 << mParams.transform_params.wavelet_depth );
+  int padded_height = (mHeight  + ( 1 << mParams.transform_params.wavelet_depth ) - 1)/( 1 << mParams.transform_params.wavelet_depth )*( 1 << mParams.transform_params.wavelet_depth );
+
+  if ((padded_width%params.transform_params.slices_x != 0) ||
+      (padded_height%params.transform_params.slices_y != 0)) {
+    writelog(LOG_ERROR, "%s:%d:  The decoder does not currently support streams with variable slice geometries.\n", __FILE__, __LINE__);
+    throw VC2DECODER_NOTIMPLEMENTED;
+  }
+
+	int slice_width = (padded_width / params.transform_params.slices_x);
+	int slice_height = (padded_height / params.transform_params.slices_y);
 
 	{
 #ifdef DEBUG_P_BLOCK
