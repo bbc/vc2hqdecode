@@ -615,8 +615,8 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
 	mHeight = mVideoFormat.frame_height;
 	if (mInterlaced) mHeight /= 2;
 
-  int padded_width  = (mWidth  + ( 1 << mParams.transform_params.wavelet_depth ) - 1)/( 1 << mParams.transform_params.wavelet_depth )*( 1 << mParams.transform_params.wavelet_depth );
-  int padded_height = (mHeight  + ( 1 << mParams.transform_params.wavelet_depth ) - 1)/( 1 << mParams.transform_params.wavelet_depth )*( 1 << mParams.transform_params.wavelet_depth );
+  int padded_width  = (mWidth  + ( 1 << params.transform_params.wavelet_depth ) - 1)/( 1 << params.transform_params.wavelet_depth )*( 1 << params.transform_params.wavelet_depth );
+  int padded_height = (mHeight  + ( 1 << params.transform_params.wavelet_depth ) - 1)/( 1 << params.transform_params.wavelet_depth )*( 1 << params.transform_params.wavelet_depth );
 
   if ((padded_width%params.transform_params.slices_x != 0) ||
       (padded_height%params.transform_params.slices_y != 0)) {

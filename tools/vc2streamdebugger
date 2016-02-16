@@ -64,7 +64,7 @@ class Decoder(object):
             self.bit = 7
             self.offset += 1
 
-def parse_info(stream, offset):
+def parse_info(stream, offset, verbose):
     if (stream[offset + 0] == 0x42 and
         stream[offset + 1] == 0x42 and
         stream[offset + 2] == 0x43 and
@@ -175,7 +175,7 @@ def process_hq_slices(stream, offset, length, slices_x, slices_y, prefix, scalar
             offset += prefix
             if offset > end:
                 raise Decoder.CoderOverrun()
-            qi.append(stream[offset]*scalar)
+            qi.append(stream[offset])
             offset += 1
             if offset > end:
                 raise Decoder.CoderOverrun()
@@ -205,7 +205,7 @@ def process_hq_slices(stream, offset, length, slices_x, slices_y, prefix, scalar
     if error:
         print "Overrun after %d slices" % (n, )
 
-def process_hq_picture(stream, offset, length):
+def process_hq_picture(stream, offset, length, verbose):
     end = offset + length
     data = []
     if (length < 5):
@@ -224,9 +224,10 @@ def process_hq_picture(stream, offset, length):
     print "    Slice Data Starts At: 0x%08x" % (offset,)
     print
 
-    #process_hq_slices(stream, offset, end - offset, slices_x, slices_y, prefix, scalar)
+    if verbose:
+        process_hq_slices(stream, offset, end - offset, slices_x, slices_y, prefix, scalar)
 
-def process_sequence_header(stream, offset, length):
+def process_sequence_header(stream, offset, length, verbose):
     dec = Decoder(stream, offset, length)
     data = []
     try:
@@ -301,13 +302,13 @@ def process_sequence_header(stream, offset, length):
     else:
         print_formated_data(data)
 
-def parse_data_unit(stream, offset, code, length):
+def parse_data_unit(stream, offset, code, length, verbose):
     if code == 0x00:
         #Sequence Header
         print
         print "    -- Sequence Header -- "
         print "      %d bytes of coded parameters" % (length,)
-        process_sequence_header(stream, offset, length)
+        process_sequence_header(stream, offset, length, verbose)
     elif code == 0x10:
         #End of Sequence
         print
@@ -336,17 +337,17 @@ def parse_data_unit(stream, offset, code, length):
         print
         print "    -- High Quality Picture -- "
         print "      %d bytes of coded data" % (length,)
-        process_hq_picture(stream, offset, length)
+        process_hq_picture(stream, offset, length, verbose)
     else:
         print
         print "    -- Unknown Parse Code -- "
         print "      %d bytes of mysterious data" % (length,)
 
-def parse_vc2_stream(stream):
+def parse_vc2_stream(stream, verbose):
     offset = 0
     garbage = 0
     while (offset < len(stream)):
-        data = parse_info(stream, offset)
+        data = parse_info(stream, offset, verbose)
         if (data is not None):
             if (garbage > 0):
                 print "0x%010x : [ GARBAGE    ]" % (offset - garbage)
@@ -363,7 +364,7 @@ def parse_vc2_stream(stream):
                 print "    next_parse_offset Error: %s" % (data['next_parse_offset_error'],)
             offset += 13
 
-            parse_data_unit(stream, offset, data['parse_code'], data['next_parse_offset'] - 13)
+            parse_data_unit(stream, offset, data['parse_code'], data['next_parse_offset'] - 13, verbose)
             offset += data['next_parse_offset'] - 13 if (data['next_parse_offset'] > 13) else 0
             print
         else:
@@ -379,6 +380,7 @@ if __name__ == "__main__":
     import struct
 
     parser = argparse.ArgumentParser(description='VC2 Stream debugging tool.')
+    parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('infilename', metavar='file', type=str,
                     help='input vc2 stream file')
 
@@ -388,4 +390,4 @@ if __name__ == "__main__":
     data = f.read()
     data = struct.unpack("!" + ('B'*len(data)), data)
 
-    parse_vc2_stream(data)
+    parse_vc2_stream(data, args.verbose)

@@ -36,6 +36,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
     switch(wavelet_index) {
     case VC2DECODER_WFT_FIDELITY:
       switch (depth - level - 1) {
+      case 3:
+        return Fidelity_invtransform_H_inplace<8>;
       case 2:
         return Fidelity_invtransform_H_inplace<4>;
       case 1:
@@ -48,6 +50,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_9_7_invtransform_H_inplace<8, int32_t>;
       case 2:
         return Deslauriers_Dubuc_9_7_invtransform_H_inplace<4, int32_t>;
       case 1:
@@ -60,6 +64,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_13_7_invtransform_H_inplace<8, int32_t>;
       case 2:
         return Deslauriers_Dubuc_13_7_invtransform_H_inplace<4, int32_t>;
       case 1:
@@ -71,18 +77,23 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_LEGALL_5_3:
-      if (depth - level - 1 == 2)
+      switch(depth - level - 1) {
+      case 3:
+        return LeGall_5_3_invtransform_H_inplace<8, int32_t>;
+      case 2:
         return LeGall_5_3_invtransform_H_inplace<4, int32_t>;
-      else if (depth - level - 1 == 1)
+      case 1:
         return LeGall_5_3_invtransform_H_inplace<2, int32_t>;
-      else if (depth - level - 1 == 0)
+      case 0:
         return LeGall_5_3_invtransform_H_inplace<1, int32_t>;
-      else {
+      default:
         writelog(LOG_ERROR, "%s:%d:  Invalid transform depth\n", __FILE__, __LINE__);
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
       switch (depth - level - 1) {
+      case 3:
+        return Haar_invtransform_H_inplace<8,0, int32_t>;
       case 2:
         return Haar_invtransform_H_inplace<4,0, int32_t>;
       case 1:
@@ -95,6 +106,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
       switch (depth - level - 1) {
+      case 3:
+        return Haar_invtransform_H_inplace<8,1, int32_t>;
       case 2:
         return Haar_invtransform_H_inplace<4,1, int32_t>;
       case 1:
@@ -113,6 +126,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
     switch(wavelet_index) {
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_9_7_invtransform_H_inplace<8, int16_t>;
       case 2:
         return Deslauriers_Dubuc_9_7_invtransform_H_inplace<4, int16_t>;
       case 1:
@@ -125,6 +140,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_13_7_invtransform_H_inplace<8, int16_t>;
       case 2:
         return Deslauriers_Dubuc_13_7_invtransform_H_inplace<4, int16_t>;
       case 1:
@@ -136,18 +153,23 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_LEGALL_5_3:
-      if (depth - level - 1 == 2)
+      switch (depth - level - 1) {
+      case 3:
+        return LeGall_5_3_invtransform_H_inplace<8, int16_t>;
+      case 2:
         return LeGall_5_3_invtransform_H_inplace<4, int16_t>;
-      else if (depth - level - 1 == 1)
+      case 1:
         return LeGall_5_3_invtransform_H_inplace<2, int16_t>;
-      else if (depth - level - 1 == 0)
+      case 0:
         return LeGall_5_3_invtransform_H_inplace<1, int16_t>;
-      else {
+      default:
         writelog(LOG_ERROR, "%s:%d:  Invalid transform depth\n", __FILE__, __LINE__);
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
       switch (depth - level - 1) {
+      case 3:
+        return Haar_invtransform_H_inplace<8,0, int16_t>;
       case 2:
         return Haar_invtransform_H_inplace<4,0, int16_t>;
       case 1:
@@ -160,6 +182,8 @@ InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
       switch (depth - level - 1) {
+      case 3:
+        return Haar_invtransform_H_inplace<8,1, int16_t>;
       case 2:
         return Haar_invtransform_H_inplace<4,1, int16_t>;
       case 1:
@@ -185,6 +209,8 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
     switch(wavelet_index) {
     case VC2DECODER_WFT_FIDELITY:
       switch (depth - level - 1) {
+      case 3:
+        return Fidelity_invtransform_V_inplace<8>;
       case 2:
         return Fidelity_invtransform_V_inplace<4>;
       case 1:
@@ -197,6 +223,8 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_13_7_invtransform_V_inplace<8, int32_t>;
       case 2:
         return Deslauriers_Dubuc_13_7_invtransform_V_inplace<4, int32_t>;
       case 1:
@@ -209,6 +237,8 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
       }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_9_7_invtransform_V_inplace<8, int32_t>;
       case 2:
         return Deslauriers_Dubuc_9_7_invtransform_V_inplace<4, int32_t>;
       case 1:
@@ -220,19 +250,24 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_LEGALL_5_3:
-      if (depth - level - 1 == 2)
+      switch (depth - level - 1) {
+      case 3:
+        return LeGall_5_3_invtransform_V_inplace<8, int32_t>;
+      case 2:
         return LeGall_5_3_invtransform_V_inplace<4, int32_t>;
-      if (depth - level - 1 == 1)
+      case 1:
         return LeGall_5_3_invtransform_V_inplace<2, int32_t>;
-      else if (depth - level - 1 == 0)
+      case 0:
         return LeGall_5_3_invtransform_V_inplace<1, int32_t>;
-      else {
+      default:
         writelog(LOG_ERROR, "%s:%d:  Invalid transform depth\n", __FILE__, __LINE__);
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
     case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
       switch(depth - level - 1) {
+      case 3:
+        return Haar_invtransform_V_inplace<8, int32_t>;
       case 2:
         return Haar_invtransform_V_inplace<4, int32_t>;
       case 1:
@@ -251,6 +286,8 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
     switch(wavelet_index) {
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_13_7_invtransform_V_inplace<8, int16_t>;
       case 2:
         return Deslauriers_Dubuc_13_7_invtransform_V_inplace<4, int16_t>;
       case 1:
@@ -264,6 +301,8 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
       break;
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7:
       switch (depth - level - 1) {
+      case 3:
+        return Deslauriers_Dubuc_9_7_invtransform_V_inplace<8, int16_t>;
       case 2:
         return Deslauriers_Dubuc_9_7_invtransform_V_inplace<4, int16_t>;
       case 1:
@@ -276,19 +315,24 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
       }
       break;
     case VC2DECODER_WFT_LEGALL_5_3:
-      if (depth - level - 1 == 2)
+      switch (depth - level - 1) {
+      case 3:
+        return LeGall_5_3_invtransform_V_inplace<8, int16_t>;
+      case 2:
         return LeGall_5_3_invtransform_V_inplace<4, int16_t>;
-      if (depth - level - 1 == 1)
+      case 1:
         return LeGall_5_3_invtransform_V_inplace<2, int16_t>;
-      else if (depth - level - 1 == 0)
+      case 0:
         return LeGall_5_3_invtransform_V_inplace<1, int16_t>;
-      else {
+      default:
         writelog(LOG_ERROR, "%s:%d:  Invalid transform depth\n", __FILE__, __LINE__);
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
     case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
       switch(depth - level - 1) {
+      case 3:
+        return Haar_invtransform_V_inplace<8, int16_t>;
       case 2:
         return Haar_invtransform_V_inplace<4, int16_t>;
       case 1:
