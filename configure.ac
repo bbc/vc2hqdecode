@@ -1,8 +1,8 @@
 AC_PREREQ([2.68])
 AC_INIT([VC2HQDECODE],[0.1.0.2])
 
-AC_CANONICAL_TARGET
-case $target in
+AC_CANONICAL_HOST
+case $host in
 x86_64-*)
         TARGET="x86_64"
         ;;
