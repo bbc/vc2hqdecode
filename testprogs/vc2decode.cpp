@@ -37,16 +37,12 @@
 #ifdef _WIN32
 #include <Windows.h>
 
-#define CLOCK_MONOTONIC 0
-int clock_gettime(int, struct timespec *spec)
+int64_t gettime(void)
 {
-  __int64 wintime;
-  GetSystemTimeAsFileTime((FILETIME*)&wintime);
+  FILETIME wintime;
+  GetSystemTimeAsFileTime(&wintime);
 
-  wintime      -=116444736000000000i64;
-  spec->tv_sec  =wintime / 10000000i64;
-  spec->tv_nsec =wintime % 10000000i64 *100;
-  return 0;
+  return ((int64_t)wintime.dwHighDateTime << 32 | wintime.dwLowDateTime) / 10 - 11644473600000000;
 }
 
 inline FILE *FOPEN(const char *fname, const char *mode) {
@@ -62,6 +58,17 @@ inline FILE *FOPEN(const char *fname, const char *mode) {
 
 #else
 #define FOPEN fopen
+#include <sys/time.h>
+
+int64_t gettime(void)
+{
+  struct timeval tv;
+
+  gettimeofday(&tv, NULL);
+
+  return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
 #endif
 
 #include "tclap/CmdLine.h"
@@ -295,8 +302,8 @@ int main (int argc, char *argv[]) {
 
     /* Decode Pictures from stream */
     int picture = 0;
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    int64_t start, end;
+    start = gettime();
     while (total_frames_decoded < num_frames) {
       r = vc2decode_decode_one_picture(decoder, &id, iend - id, opics[picture], ostride, true);
 
@@ -334,7 +341,7 @@ int main (int argc, char *argv[]) {
       fprintf(stderr, "Unknown Return value: %d\n", r);
       break;
     }
-    clock_gettime(CLOCK_MONOTONIC, &end);
+    end = gettime();
     /* We have reached the end of a sequence, or have decoded enough frames */
 
     /*If an error has occurred bail */
@@ -354,14 +361,14 @@ int main (int argc, char *argv[]) {
       num_frames_decoded_from_sequence = num_frames_decoded_from_this_sequence;
 
     /* And update the record of time taken to decode */
-    time_taken += (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+    time_taken += end - start;
   }
 
   /* If there has been no error print the speed */
   if (!err) {
     printf("--------------------------------------------------\n");
-    printf("  %d frames decoded in %5.3fs\n", total_frames_decoded, time_taken/1000000000.0);
-    printf("  %5.3ffps\n", total_frames_decoded*1000000000.0/time_taken);
+    printf("  %d frames decoded in %5.3fs\n", total_frames_decoded, time_taken/1000000.0);
+    printf("  %5.3ffps\n", total_frames_decoded*1000000.0/time_taken);
     printf("--------------------------------------------------\n");
   }
 
