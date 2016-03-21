@@ -27,7 +27,6 @@
 #include "tests.hpp"
 #include <cstdio>
 #include <vc2hqdecode/vc2hqdecode.h>
-#include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../vc2hqdecode/dequantise.hpp"
