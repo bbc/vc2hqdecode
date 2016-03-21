@@ -32,7 +32,19 @@
   #define ALIGNED_FREE(ptr) _aligned_free(ptr)
   #define ALIGNED(N) __declspec(align((N)))
 #else
-  #define ALIGNED_ALLOC(align, size) aligned_alloc(align, size)
+#include <stdlib.h>
+
+static __inline void *vc2_align_malloc(int align, size_t size)
+{
+    void *ptr = NULL;
+
+    if (posix_memalign(&ptr, align, size)) {
+        ptr = NULL;
+    }
+
+    return ptr;
+}
+  #define ALIGNED_ALLOC(align, size) vc2_align_malloc(align, size)
   #define ALIGNED_FREE(ptr) free(ptr)
   #define ALIGNED(N)
 #endif

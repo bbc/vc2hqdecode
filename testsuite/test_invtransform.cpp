@@ -28,7 +28,6 @@
 #include <cstdio>
 #include <vc2hqdecode/vc2hqdecode.h>
 #include <vc2hqdecode/vc2hqdecodestrings.h>
-#include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../vc2inversetransform_c/invtransform_c.hpp"
