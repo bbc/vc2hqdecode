@@ -10,11 +10,12 @@ libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_LIBADD = \
 	$(top_builddir)/vc2inversetransform_sse4_2/libvc2invtransform-sse4-2.la
 
 libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_LDFLAGS = \
-	-no-undefined \
-	-version-info $(VC2HQDECODE_LIBVERSION) \
-	$(VC2HQDECODE_LDFLAGS) \
-	-lpthread \
-  -export-symbols-regex 'vc2decode'
+  -no-undefined \
+  -version-info $(VC2HQDECODE_LIBVERSION) \
+  $(VC2HQDECODE_LDFLAGS) \
+  -lpthread \
+  -export-symbols-regex 'vc2decode' \
+  -lgcc
 
 libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_CPPFLAGS = $(VC2HQDECODE_CFLAGS) \
 							$(REDIST_CFLAGS)
