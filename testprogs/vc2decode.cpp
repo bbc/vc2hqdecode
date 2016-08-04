@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <stdexcept>
 #include <string>
 #include <list>
 
