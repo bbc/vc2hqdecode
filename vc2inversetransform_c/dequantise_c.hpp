@@ -26,15 +26,9 @@
 #ifndef __DEQUANTISE_C_CPP__
 #define __DEQUANTISE_C_CPP__
 
-#include "dequantise.hpp"
+#include "common/attributes.h"
 
-#ifdef __GNUC__
-#define VC2EXPORT __attribute__((visibility("default")))
-#elif _MSC_VER
-#define VC2EXPORT __declspec(dllexport)
-#else
-#define VC2EXPORT
-#endif
+#include "dequantise.hpp"
 
 VC2EXPORT DequantiseFunction getDequantiseFunction_c(int slice_width,
                                                      int slice_height,
