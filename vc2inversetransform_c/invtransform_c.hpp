@@ -26,15 +26,9 @@
 #ifndef __INVTRANSFORM_C_HPP__
 #define __INVTRANSFORM_C_HPP__
 
-#include "invtransform.hpp"
+#include "common/attributes.h"
 
-#ifdef __GNUC__
-#define VC2EXPORT __attribute__((visibility("default")))
-#elif _MSC_VER
-#define VC2EXPORT __declspec(dllexport)
-#else
-#define VC2EXPORT
-#endif
+#include "invtransform.hpp"
 
 VC2EXPORT InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, int sample_size);
 VC2EXPORT InplaceTransform get_invhtransform_c(int wavelet_index, int level, int depth, int sample_size);
