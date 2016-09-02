@@ -26,14 +26,14 @@
 #* For more information, contact us at ipstudio@bbc.co.uk.
 #*****************************************************************************
 
-from math import log10
+from math import log10, sqrt
 
 def PSNR(N, A,B):
     mse = 0
     for n in range(0, N):
         mse += ((A[n] >> 6) - (B[n] >> 6))*((A[n] >> 6) - (B[n] >> 6))
     mse /= N
-    psnr = 20*log10(0x3FF) - 10*log10(mse)
+    psnr = -20*log10(sqrt(mse)/(1 << 10))
     return psnr
 
 if __name__ == "__main__":
