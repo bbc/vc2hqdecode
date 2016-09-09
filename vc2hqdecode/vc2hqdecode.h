@@ -54,7 +54,7 @@ extern "C" {
 /**
  * This constant will change when the API in this header file changes.
  */
-#define VC2DECODER_API_VERSION 1
+#define VC2DECODER_API_VERSION 2
 
 /*
  This forces a link error if trying to link to an incompatible version of the code,
