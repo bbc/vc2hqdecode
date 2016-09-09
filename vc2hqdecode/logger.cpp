@@ -43,7 +43,7 @@ int vasprintf(char **msg, const char *fmt, va_list args) {
 }
 #endif
 
-VC2DecoderLoggers loggers = { 0, 0, 0, 0, 0 };
+VC2DecoderLoggers loggers = { NULL, NULL, NULL, NULL, NULL };
 
 const char *loglevels[] = { "ERROR", "WARN", "INFO", "DEBUG" };
 
