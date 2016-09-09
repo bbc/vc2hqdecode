@@ -423,7 +423,7 @@ typedef struct _VC2DecoderLoggers {
  * detection of CPU features in order to determine which versions of
  * certain functions to make use of
  */
-VC2HQDECODE_API void vc2decode_init();
+VC2HQDECODE_API void vc2decode_init(void);
 
 
 /**
@@ -442,7 +442,7 @@ VC2HQDECODE_API void vc2decoder_init_logging(VC2DecoderLoggers);
  * general this is not likely to be required unless decoding multiple streams
  * in parallel.
  */
-VC2HQDECODE_API VC2DecoderHandle vc2decode_create();
+VC2HQDECODE_API VC2DecoderHandle vc2decode_create(void);
 
 
 /**
