@@ -433,7 +433,7 @@ VC2HQDECODE_API void vc2decode_init();
  *
  * The paramter is a struct of type VC2DecoderLoggers
  */
-VC2HQDECODE_API void vc2decoder_init_logging(VC2DecoderLoggers);
+VC2HQDECODE_API void vc2decode_init_logging(VC2DecoderLoggers);
 
 /**
  * This function is used by the host application to create a new decoder, which

@@ -47,7 +47,7 @@ VC2DecoderLoggers loggers = { 0, 0, 0, 0, 0 };
 
 const char *loglevels[] = { "ERROR", "WARN", "INFO", "DEBUG" };
 
-void vc2decoder_init_logging(VC2DecoderLoggers l) {
+void vc2decode_init_logging(VC2DecoderLoggers l) {
 	loggers = l;
 }
 
