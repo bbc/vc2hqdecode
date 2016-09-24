@@ -93,7 +93,17 @@ InplaceTransformFinal get_invhtransformfinal_sse4_2(int wavelet_index, int activ
       default:
         break;
       }
-    }
+	}
+	else if (active_bits == 12) {
+		switch (wavelet_index) {
+		case VC2DECODER_WFT_HAAR_NO_SHIFT:
+			return Haar_invtransform_H_final_1_12_sse4_2_int32_t<0>;
+		case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
+			return Haar_invtransform_H_final_1_12_sse4_2_int32_t<1>;
+		default:
+			break;
+		}
+	}
   } else if (sample_size == 2) {
     if (active_bits == 10) {
       switch(wavelet_index) {
@@ -106,7 +116,17 @@ InplaceTransformFinal get_invhtransformfinal_sse4_2(int wavelet_index, int activ
       default:
         break;
       }
-    }
+	}
+	else if (active_bits == 12) {
+		switch (wavelet_index) {
+		case VC2DECODER_WFT_HAAR_NO_SHIFT:
+			return Haar_invtransform_H_final_1_12_sse4_2_int16_t<0>;
+		case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
+			return Haar_invtransform_H_final_1_12_sse4_2_int16_t<1>;
+		default:
+			break;
+		}
+	}
   }
 
   return get_invhtransformfinal_c(wavelet_index, active_bits, sample_size);
