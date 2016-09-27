@@ -30,10 +30,6 @@
 #include <x86intrin.h>
 #endif // _WIN32
 
-#define MIN(A,B) (((A)>(B))?(B):(A))
-#define MAX(A,B) (((A)<(B))?(B):(A))
-
-
 template<int skip>void Haar_invtransform_V_inplace_sse4_2(void *_idata,
                                                         const int istride,
                                                         const int width,

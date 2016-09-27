@@ -102,8 +102,8 @@ template<int shift, int active_bits, class T> void Haar_invtransform_H_final_1(v
         Xp1 >>= shift;
       }
 
-      ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX(((X) + (1 << (active_bits - 1))), 0), 0x3ff);
-      ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 1*skip)] = (uint16_t)MIN(MAX(((Xp1) + (1 << (active_bits - 1))), 0), 0x3ff);
+      ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX(((X) + (1 << (active_bits - 1))), 0), clip);
+      ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 1*skip)] = (uint16_t)MIN(MAX(((Xp1) + (1 << (active_bits - 1))), 0), clip);
     }
   }
 }
