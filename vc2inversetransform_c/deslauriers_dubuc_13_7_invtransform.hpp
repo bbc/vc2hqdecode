@@ -35,7 +35,7 @@ template<int skip, class T>void Deslauriers_Dubuc_13_7_invtransform_V_inplace(vo
   T *idata = (T*)_idata;
   for (int x = 0; x < width; x += skip) {
     int y = 0;
-    int32_t Xm6, Xm5, Xm4, Xm3, Xm2, Xm1, X, Xp1, Xp2, Xp3;
+    int32_t Xm6, Xm5, Xm4, Xm3, Xm2 = 0, Xm1, X, Xp1, Xp2, Xp3;
     int32_t Dm6, Dm4, Dm3, Dm2, D;
 
     X   = idata[(y + 0*skip)*istride + x];
@@ -184,7 +184,7 @@ template<int skip, class T>void Deslauriers_Dubuc_13_7_invtransform_H_inplace(vo
   T *idata = (T*)_idata;
   for (int y = 0; y < height; y += skip) {
     int x = 0;
-    int32_t Xm6, Xm5, Xm4, Xm3, Xm2, Xm1, X, Xp1, Xp2, Xp3;
+    int32_t Xm6, Xm5, Xm4, Xm3, Xm2 = 0, Xm1, X, Xp1, Xp2, Xp3;
     int32_t Dm6, Dm4, Dm3, Dm2, D;
 
     X   = idata[y*istride + x + 0*skip];

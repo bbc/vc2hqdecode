@@ -355,7 +355,7 @@ InplaceTransform get_invvtransform_c(int wavelet_index, int level, int depth, in
 }
 
 InplaceTransformFinal get_invhtransformfinal_c(int wavelet_index, int active_bits, int sample_size) {
-  if (active_bits != 10 && active_bits != 12) {
+  if (active_bits < 10 || active_bits > 16 || (active_bits % 2) != 0) {
     writelog(LOG_ERROR, "%s:%d:  Invalid bit depth\n", __FILE__, __LINE__);
     throw VC2DECODER_NOTIMPLEMENTED;
   }
@@ -371,16 +371,17 @@ InplaceTransformFinal get_invhtransformfinal_c(int wavelet_index, int active_bit
     case VC2DECODER_WFT_LEGALL_5_3:
       return LeGall_5_3_invtransform_H_final_1_10<int32_t>;
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
-		if (active_bits == 10)
-			return Haar_invtransform_H_final_1_10<0, int32_t>;
-		else if (active_bits == 12)
-			return Haar_invtransform_H_final_1_12<0, int32_t>;
+      switch (active_bits) {
+        case 10: return Haar_invtransform_H_final_1<0, 10, int32_t>;
+        case 12: return Haar_invtransform_H_final_1<0, 12, int32_t>;
+      }
+      break;
     case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
-		if (active_bits == 10)
-			return Haar_invtransform_H_final_1_10<1, int32_t>;
-		else if (active_bits == 12)
-			return Haar_invtransform_H_final_1_12<1, int32_t>;
-
+      switch (active_bits) {
+        case 10: return Haar_invtransform_H_final_1<1, 10, int32_t>;
+        case 12: return Haar_invtransform_H_final_1<1, 12, int32_t>;
+      }
+      break;
     default:
       writelog(LOG_ERROR, "%s:%d:  Invalid transform\n", __FILE__, __LINE__);
       throw VC2DECODER_NOTIMPLEMENTED;
@@ -394,16 +395,17 @@ InplaceTransformFinal get_invhtransformfinal_c(int wavelet_index, int active_bit
     case VC2DECODER_WFT_LEGALL_5_3:
       return LeGall_5_3_invtransform_H_final_1_10<int16_t>;
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
-		if (active_bits == 10)
-			return Haar_invtransform_H_final_1_10<0, int16_t>;
-		else if (active_bits == 12)
-			return Haar_invtransform_H_final_1_12<0, int16_t>;
+      switch (active_bits) {
+        case 10: return Haar_invtransform_H_final_1<0, 10, int16_t>;
+        case 12: return Haar_invtransform_H_final_1<0, 12, int16_t>;
+      }
+      break;
     case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
-		if (active_bits == 10)
-			return Haar_invtransform_H_final_1_10<1, int16_t>;
-		else if (active_bits == 12)
-			return Haar_invtransform_H_final_1_12<1, int16_t>;
-
+      switch (active_bits) {
+        case 10: return Haar_invtransform_H_final_1<1, 10, int16_t>;
+        case 12: return Haar_invtransform_H_final_1<1, 12, int16_t>;
+      }
+      break;
     default:
       writelog(LOG_ERROR, "%s:%d:  Invalid transform\n", __FILE__, __LINE__);
       throw VC2DECODER_NOTIMPLEMENTED;
