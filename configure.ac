@@ -1,8 +1,8 @@
 AC_PREREQ([2.68])
 AC_INIT([VC2HQDECODE],[0.1.0.2])
 
-AC_CANONICAL_TARGET
-case $target in
+AC_CANONICAL_HOST
+case $host in
 x86_64-*)
         TARGET="x86_64"
         ;;
@@ -136,7 +136,7 @@ AX_CREATE_STDINT_H([vc2hqdecode/vc2hqdecode-stdint.h])
 AC_APPEND_SUPPORTED_CFLAGS(VC2HQDECODE_CFLAGS, [-Wall])
 if test "x$VC2HQDECODE_CVS" = "xyes"
 then
-  AC_APPEND_SUPPORTED_CFLAGS(VC2HQDECODE_CFLAGS, [-Werror -Wextra])
+  AC_APPEND_SUPPORTED_CFLAGS(VC2HQDECODE_CFLAGS, [-Wextra])
 fi
 
 VC2HQDECODE_CFLAGS="$VC2HQDECODE_CFLAGS -I\$(top_srcdir)"

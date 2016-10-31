@@ -1013,7 +1013,7 @@ uint64_t VC2Decoder::SliceInput(char *_idata, int ilength, JobData **jobs) {
 						throw VC2DECODER_CODEROVERRUN;
 					}
 
-					job->coded_slices[n].qindex = (int)(*(idata++));
+					job->coded_slices[n].qindex = (int)(*((uint8_t *)idata++));
 					job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
@@ -1095,7 +1095,7 @@ uint64_t VC2Decoder::SliceInput(char *_idata, int ilength, JobData **jobs) {
 						throw VC2DECODER_CODEROVERRUN;
 					}
 
-					job->coded_slices[n].qindex = (int)(*(idata++));
+					job->coded_slices[n].qindex = (int)(*((uint8_t *)idata++));
 					job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES

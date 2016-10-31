@@ -7,6 +7,15 @@
 # The fields are: name (N), email (E), web-address (W), CVS account login (C),
 # PGP key ID and fingerprint (P), description (D), and snail-mail address (S).
 
+N: Luca Barbato
+E: lu_zero@gentoo.org
+D: Compatibility with more OSs
+D: Bugfixes
+
+N: Diego Biurrun
+E: diego@biurrun.de
+D: Bugfixes
+
 N: James P. Weaver
 E: james.barrett@bbc.co.uk
 D: Maintainer
