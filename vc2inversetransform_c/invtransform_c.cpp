@@ -363,13 +363,25 @@ InplaceTransformFinal get_invhtransformfinal_c(int wavelet_index, int active_bit
   if (sample_size == 4) {
     switch(wavelet_index) {
     case VC2DECODER_WFT_FIDELITY:
-      return Fidelity_invtransform_H_final_1_10;
+      switch (active_bits) {
+      case 10: return Fidelity_invtransform_H_final_1<10>;
+      case 12: return Fidelity_invtransform_H_final_1<12>;
+      }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7:
-      return Deslauriers_Dubuc_9_7_invtransform_H_final_1_10<int32_t>;
+      switch (active_bits) {
+      case 10: return Deslauriers_Dubuc_9_7_invtransform_H_final_1<10, int32_t>;
+      case 12: return Deslauriers_Dubuc_9_7_invtransform_H_final_1<12, int32_t>;
+      }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7:
-      return Deslauriers_Dubuc_13_7_invtransform_H_final_1_10<int32_t>;
+      switch (active_bits) {
+      case 10: return Deslauriers_Dubuc_13_7_invtransform_H_final_1<10, int32_t>;
+      case 12: return Deslauriers_Dubuc_13_7_invtransform_H_final_1<12, int32_t>;
+      }
     case VC2DECODER_WFT_LEGALL_5_3:
-      return LeGall_5_3_invtransform_H_final_1_10<int32_t>;
+      switch (active_bits) {
+      case 10: return LeGall_5_3_invtransform_H_final_1<10, int32_t>;
+      case 12: return LeGall_5_3_invtransform_H_final_1<12, int32_t>;
+      }
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
       switch (active_bits) {
         case 10: return Haar_invtransform_H_final_1<0, 10, int32_t>;
@@ -389,11 +401,20 @@ InplaceTransformFinal get_invhtransformfinal_c(int wavelet_index, int active_bit
   } else if (sample_size == 2) {
     switch(wavelet_index) {
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7:
-      return Deslauriers_Dubuc_9_7_invtransform_H_final_1_10<int16_t>;
+      switch (active_bits) {
+      case 10: return Deslauriers_Dubuc_9_7_invtransform_H_final_1<10, int16_t>;
+      case 12: return Deslauriers_Dubuc_9_7_invtransform_H_final_1<12, int16_t>;
+      }
     case VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7:
-      return Deslauriers_Dubuc_13_7_invtransform_H_final_1_10<int16_t>;
+      switch (active_bits) {
+      case 10: return Deslauriers_Dubuc_13_7_invtransform_H_final_1<10, int16_t>;
+      case 12: return Deslauriers_Dubuc_13_7_invtransform_H_final_1<12, int16_t>;
+      }
     case VC2DECODER_WFT_LEGALL_5_3:
-      return LeGall_5_3_invtransform_H_final_1_10<int16_t>;
+      switch (active_bits) {
+      case 10: return LeGall_5_3_invtransform_H_final_1<10, int16_t>;
+      case 12: return LeGall_5_3_invtransform_H_final_1<12, int16_t>;
+      }
     case VC2DECODER_WFT_HAAR_NO_SHIFT:
       switch (active_bits) {
         case 10: return Haar_invtransform_H_final_1<0, 10, int16_t>;

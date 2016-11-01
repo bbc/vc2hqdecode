@@ -325,7 +325,7 @@ template<int skip, class T>void Deslauriers_Dubuc_13_7_invtransform_H_inplace(vo
   }
 }
 
-template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_idata,
+template<int active_bits, class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1(void *_idata,
                                                                         const int istride,
                                                                         const char *odata,
                                                                         const int ostride,
@@ -337,6 +337,8 @@ template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_i
                                                                         const int oheight) {
   T *idata = (T*)_idata;
   const int skip = 1;
+  const uint16_t clip = (1 << active_bits) - 1;
+  const uint16_t offset = 1 << (active_bits - 1);
 
   for (int y = ooffset_y; y < iheight && y < ooffset_y + oheight; y+=skip) {
     int x = 0;
@@ -387,8 +389,8 @@ template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_i
       Dm3 = Xm3 + ((-Dm6 + 9*Dm4 + 9*Dm2 - D   +  8) >> 4);
 
       if (x >= ooffset_x + 4*skip && x < ooffset_x + owidth + 3*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + offset), 0), clip);
       }
 
       Dm6 = Dm4;
@@ -409,8 +411,8 @@ template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_i
       Dm3 = Xm3 + ((-Dm6 + 9*Dm4 + 9*Dm2 - D   +  8) >> 4);
 
       if (x >= ooffset_x + 4*skip && x < ooffset_x + owidth + 3*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + offset), 0), clip);
       }
 
       Dm6 = Dm4;
@@ -433,8 +435,8 @@ template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_i
       Dm3 = Xm3 + ((-Dm6 + 9*Dm4 + 9*Dm2 - D   +  8) >> 4);
 
       if (x >= ooffset_x + 4*skip && x < ooffset_x + owidth + 3*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + offset), 0), clip);
       }
 
       Dm6 = Dm4;
@@ -460,8 +462,8 @@ template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_i
       Dm3 = Xm3 + ((-Dm6 + 9*Dm4 + 9*Dm2 - D   +  8) >> 4);
 
       if (x >= ooffset_x + 4*skip && x < ooffset_x + owidth + 3*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + offset), 0), clip);
       }
 
       D   = Dm4;
@@ -485,8 +487,8 @@ template<class T> void Deslauriers_Dubuc_13_7_invtransform_H_final_1_10(void *_i
       Dm3 = Xm3 + ((-Dm6 + 9*Dm4 + 9*Dm2 - D   +  8) >> 4);
 
       if (x >= ooffset_x + 4*skip && x < ooffset_x + owidth + 3*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 4*skip] = (uint16_t)MIN(MAX(((Dm4 >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Dm3 >> 1) + offset), 0), clip);
       }
     }
   }

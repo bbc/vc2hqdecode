@@ -711,7 +711,7 @@ template<int skip>void Fidelity_invtransform_H_inplace(void *_idata,
   }
 }
 
-void Fidelity_invtransform_H_final_1_10(void *_idata,
+template<int active_bits> void Fidelity_invtransform_H_final_1(void *_idata,
                                                      const int istride,
                                                      const char *odata,
                                                      const int ostride,
@@ -723,6 +723,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                                                      const int oheight) {
   int32_t *idata = (int32_t *)_idata;
   const int skip = 1;
+  const uint16_t clip = (1 << active_bits) - 1;
+  const uint16_t offset = 1 << (active_bits - 1);
 
   for (int y = ooffset_y; y < iheight && y < ooffset_y + oheight; y+=skip) {
     int x = 0;
@@ -836,8 +838,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 7; i++) {
@@ -864,8 +866,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 7; i++) {
@@ -893,8 +895,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 6; i++) {
@@ -927,8 +929,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 5; i++) {
@@ -963,8 +965,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 4; i++) {
@@ -999,8 +1001,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 3; i++) {
@@ -1023,8 +1025,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       for (int i = 0; i < 2; i++) {
@@ -1048,8 +1050,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
 
       Xe[0] = Xe[1];
@@ -1072,8 +1074,8 @@ void Fidelity_invtransform_H_final_1_10(void *_idata,
                       +161*(Do[3] + Do[4]) + 128) >> 8);
 
       if (x >= ooffset_x + 6*skip && x < ooffset_x + owidth + 5*skip) {
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + (1 << 9)), 0), 0x3ff);;
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 6*skip] = (uint16_t)MIN(MAX(((Dm6   >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[(y - ooffset_y)*ostride + (x - ooffset_x) - 3*skip] = (uint16_t)MIN(MAX(((Xo[1] >> 1) + offset), 0), clip);
       }
     }
   }
