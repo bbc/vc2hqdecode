@@ -96,6 +96,12 @@ invhtransformfinaltest_data INVHTRANSFORMFINALTEST_DATA[] = {
   { VC2DECODER_WFT_HAAR_SINGLE_SHIFT, 10, 4, true, false, false },
   { VC2DECODER_WFT_LEGALL_5_3, 10, 2, true, false, false },
   { VC2DECODER_WFT_LEGALL_5_3, 10, 4, true, false, false },
+  { VC2DECODER_WFT_HAAR_NO_SHIFT, 12, 2, true, false, false },
+  { VC2DECODER_WFT_HAAR_NO_SHIFT, 12, 4, true, false, false },
+  { VC2DECODER_WFT_HAAR_SINGLE_SHIFT, 12, 2, true, false, false },
+  { VC2DECODER_WFT_HAAR_SINGLE_SHIFT, 12, 4, true, false, false },
+  { VC2DECODER_WFT_LEGALL_5_3, 12, 2, true, false, false },
+  { VC2DECODER_WFT_LEGALL_5_3, 12, 4, true, false, false },
 };
 
 const int INVHTRANSFORMFINALTEST_DATA_NUM = sizeof(INVHTRANSFORMFINALTEST_DATA)/sizeof(invhtransformfinaltest_data);
@@ -334,6 +340,14 @@ int perform_invhtransformfinaltest(invhtransformfinaltest_data &data,
         trans(idata, stride, tdata + (offsets[i].top*stride + offsets[i].left)*2, stride, width, height, offsets[i].left, offsets[i].top, width - offsets[i].left - offsets[i].right, height - offsets[i].top - offsets[i].bottom);
         if (memcmp(cdata, tdata, height*stride*sizeof(uint16_t))) {
           printf("FAIL]\n");
+
+          for (int i = 0; i < (int)(height*stride*sizeof(uint16_t)); i++) {
+            if (cdata[i] != tdata[i]) {
+              printf("\nFirst difference at byte %d, 0x%02x =/= 0x%02x\n\n", i, ((uint8_t *)cdata)[i], ((uint8_t *)tdata)[i]);
+              break;
+            }
+          }
+
           r = 1;
         } else {
           printf(" OK ] ");
