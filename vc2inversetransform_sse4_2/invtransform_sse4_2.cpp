@@ -82,30 +82,49 @@ InplaceTransform get_invvtransform_sse4_2(int wavelet_index, int level, int dept
 
 InplaceTransformFinal get_invhtransformfinal_sse4_2(int wavelet_index, int active_bits, int sample_size) {
   if (sample_size == 4) {
-    if (active_bits == 10) {
-      switch(wavelet_index) {
+    switch (wavelet_index) {
       case VC2DECODER_WFT_LEGALL_5_3:
-        return LeGall_5_3_invtransform_H_final_1_10_sse4_2<int32_t>;
+        switch (active_bits) {
+        case 10: return LeGall_5_3_invtransform_H_final_1_10_sse4_2_int32_t<10>;
+        case 12: return LeGall_5_3_invtransform_H_final_1_10_sse4_2_int32_t<12>;
+        }
       case VC2DECODER_WFT_HAAR_NO_SHIFT:
-        return Haar_invtransform_H_final_1_10_sse4_2_int32_t<0>;
+        switch (active_bits) {
+        case 10: return Haar_invtransform_H_final_1_sse4_2_int32_t<0, 10>;
+        case 12: return Haar_invtransform_H_final_1_sse4_2_int32_t<0, 12>;
+        }
+        break;
       case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
-        return Haar_invtransform_H_final_1_10_sse4_2_int32_t<1>;
+        switch (active_bits) {
+        case 10: return Haar_invtransform_H_final_1_sse4_2_int32_t<1, 10>;
+        case 12: return Haar_invtransform_H_final_1_sse4_2_int32_t<1, 12>;
+        }
+        break;
       default:
         break;
-      }
     }
-  } else if (sample_size == 2) {
-    if (active_bits == 10) {
-      switch(wavelet_index) {
-      case VC2DECODER_WFT_LEGALL_5_3:
-        return LeGall_5_3_invtransform_H_final_1_10_sse4_2<int16_t>;
-      case VC2DECODER_WFT_HAAR_NO_SHIFT:
-        return Haar_invtransform_H_final_1_10_sse4_2_int16_t<0>;
-      case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
-        return Haar_invtransform_H_final_1_10_sse4_2_int16_t<1>;
-      default:
-        break;
+  }
+  else if (sample_size == 2) {
+    switch (wavelet_index) {
+    case VC2DECODER_WFT_LEGALL_5_3:
+      switch (active_bits) {
+      case 10: return LeGall_5_3_invtransform_H_final_1_10_sse4_2_int16_t<10>;
+      case 12: return LeGall_5_3_invtransform_H_final_1_10_sse4_2_int16_t<12>;
       }
+    case VC2DECODER_WFT_HAAR_NO_SHIFT:
+      switch (active_bits) {
+      case 10: return Haar_invtransform_H_final_1_sse4_2_int16_t<0, 10>;
+      case 12: return Haar_invtransform_H_final_1_sse4_2_int16_t<0, 12>;
+      }
+      break;
+    case VC2DECODER_WFT_HAAR_SINGLE_SHIFT:
+      switch (active_bits) {
+      case 10: return Haar_invtransform_H_final_1_sse4_2_int16_t<1, 10>;
+      case 12: return Haar_invtransform_H_final_1_sse4_2_int16_t<1, 12>;
+      }
+      break;
+    default:
+      break;
     }
   }
 

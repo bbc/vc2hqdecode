@@ -549,16 +549,19 @@ void VC2Decoder::setVideoFormat(VC2DecoderParamsInternal &params) {
 		}
 	}
 
-	if (mVideoFormat.luma_active_bits != 10 || mVideoFormat.color_diff_active_bits != 10 ||
+	if ((mVideoFormat.luma_active_bits != 10 && mVideoFormat.luma_active_bits != 12) || (mVideoFormat.color_diff_active_bits != 10 && mVideoFormat.color_diff_active_bits != 12) ||
 		//      mVideoFormat.frame_width != 1920 || mVideoFormat.frame_height != 1080 ||
 		mVideoFormat.color_diff_format_index != VC2DECODER_CDS_422) {
-		writelog(LOG_ERROR, "%s:%d:  Frame geometry not supported, only 4:2:2 10-bit is supported currently.", __FILE__, __LINE__);
+		writelog(LOG_ERROR, "%s:%d:  Frame geometry not supported, only 4:2:2 10-bit or 12-bit is supported currently.", __FILE__, __LINE__);
 		throw VC2DECODER_NOTIMPLEMENTED;
 	}
 
 	mOutputFormat.width = mVideoFormat.frame_width;
 	mOutputFormat.height = mVideoFormat.frame_height;
-	mOutputFormat.signal_range = VC2DECODER_PSR_10BITVID;
+	if (mVideoFormat.luma_active_bits == 10)
+		mOutputFormat.signal_range = VC2DECODER_PSR_10BITVID;
+	else if (mVideoFormat.luma_active_bits == 12)
+		mOutputFormat.signal_range = VC2DECODER_PSR_12BITVID;
 	mOutputFormat.source_sampling = mVideoFormat.color_diff_format_index;
 	mOutputFormat.frame_rate_numer = mVideoFormat.frame_rate_numer;
 	mOutputFormat.frame_rate_denom = mVideoFormat.frame_rate_denom;
@@ -825,7 +828,12 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
 	for (int l = 0; l < (int)params.transform_params.wavelet_depth - 1; l++)
 		transforms_h[l] = get_invhtransform(params.transform_params.wavelet_index, l, params.transform_params.wavelet_depth, sample_size);
 
-	transforms_final = get_invhtransformfinal(params.transform_params.wavelet_index, 10, sample_size);
+	int active_bits;
+	if (mOutputFormat.signal_range == VC2DECODER_PSR_10BITVID)
+		active_bits = 10;
+	else if (mOutputFormat.signal_range == VC2DECODER_PSR_12BITVID)
+		active_bits = 12;
+	transforms_final = get_invhtransformfinal(params.transform_params.wavelet_index, active_bits, sample_size);
 
 	if (transforms_v)
 		delete[] transforms_v;
