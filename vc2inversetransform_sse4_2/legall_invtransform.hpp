@@ -283,9 +283,9 @@ template<int active_bits> void LeGall_5_3_invtransform_H_final_1_10_sse4_2_int32
       ZO1 = _mm_add_epi32(O1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(ZE0, ZE2), ONE), 1)); // {  1  3  5  7 }
 
 
-      Z0  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi32(ZE0, ZO1), ONE), 1), OFFSET), 6); // {  0  1  2  3 }
-      Z4  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi32(ZE0, ZO1), ONE), 1), OFFSET), 6); // {  4  5  6  7 }
-      ZZ0 = _mm_srli_epi16(_mm_packus_epi32(Z0, Z4), 6);
+      Z0  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi32(ZE0, ZO1), ONE), 1), OFFSET), (16 - active_bits)); // {  0  1  2  3 }
+      Z4  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi32(ZE0, ZO1), ONE), 1), OFFSET), (16 - active_bits)); // {  4  5  6  7 }
+      ZZ0 = _mm_srli_epi16(_mm_packus_epi32(Z0, Z4), (16 - active_bits));
       _mm_storeu_si128((__m128i *)&odata[((y - ooffset_y)*ostride + x - ooffset_x)*2], ZZ0);
     }
   }
