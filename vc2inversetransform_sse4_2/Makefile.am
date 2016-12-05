@@ -15,8 +15,9 @@ libvc2invtransform_sse4_2_la_SOURCES = \
 	vlc_sse4_2.cpp
 
 noinst_HEADERS = \
-				dequantise_sse4_2.hpp \
-        invtransform_sse4_2.hpp \
-        legall_invtransform.hpp \
-        haar_invtransform.hpp \
-				vlc_sse4_2.hpp
+	dequantise_sse4_2.hpp \
+	invtransform_sse4_2.hpp \
+	legall_invtransform.hpp \
+	haar_invtransform.hpp \
+	vlc_sse4_2.hpp \
+        $(top_srcdir)/common/attributes.h

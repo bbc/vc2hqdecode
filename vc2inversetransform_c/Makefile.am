@@ -14,11 +14,12 @@ libvc2invtransform_c_la_SOURCES = \
 	vlc_c.cpp
 
 noinst_HEADERS = \
-				vlc_c.hpp \
-				dequantise_c.hpp \
-        invtransform_c.hpp \
-        legall_invtransform.hpp \
-        haar_invtransform.hpp \
-        deslauriers_dubuc_9_7_invtransform.hpp \
-        deslauriers_dubuc_13_7_invtransform.hpp \
-				fidelity_invtransform.hpp
+	vlc_c.hpp \
+	dequantise_c.hpp \
+	invtransform_c.hpp \
+	legall_invtransform.hpp \
+	haar_invtransform.hpp \
+	deslauriers_dubuc_9_7_invtransform.hpp \
+	deslauriers_dubuc_13_7_invtransform.hpp \
+	fidelity_invtransform.hpp \
+	$(top_srcdir)/common/attributes.h
