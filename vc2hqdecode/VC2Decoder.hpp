@@ -72,6 +72,7 @@ public:
     memset(&mSequenceInfo, 0, sizeof(VC2DecoderSequenceInfo));
 
     mSampleSize = 0;
+    mMajorVersion = 0;
   }
 
   ~VC2Decoder() {
@@ -112,6 +113,7 @@ public:
   VC2DecoderOutputFormat getOutputFormat() { return mOutputFormat; }
 
   uint64_t decodeFrame(char *idata, int ilength, uint16_t **odata, int *ostride);
+  bool handleFragment(char *idata, int ilength, uint16_t **odata, int *ostride);
 
   char *FindNextParseInfo(char *_idata, int ilength);
   /*
@@ -126,6 +128,7 @@ protected:
   int processTransformParams(uint8_t *_idata, int ilength);
 
   uint64_t SliceInput(char *idata, int ilength, JobData **jobs);
+  uint64_t SliceInputFragment(char *idata, int ilength, int n_slices, int x_offset, int y_offset, JobData **jobs);
 
   void Decode(JobData *, uint16_t **odata, int *ostride);
 
@@ -174,6 +177,9 @@ protected:
   VC2DecoderSequenceInfo mSequenceInfo;
 
   int mSampleSize;
+
+  int mSlicesSlicedFromFragments;
+  int mMajorVersion;
 };
 
 #endif /* __VC2DECODER_HPP__ */

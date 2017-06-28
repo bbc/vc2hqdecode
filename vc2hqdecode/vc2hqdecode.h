@@ -54,7 +54,7 @@ extern "C" {
 /**
  * This constant will change when the API in this header file changes.
  */
-#define VC2DECODER_API_VERSION 1
+#define VC2DECODER_API_VERSION 2
 
 /*
  This forces a link error if trying to link to an incompatible version of the code,
@@ -290,6 +290,7 @@ typedef struct _VC2DecoderVideoFormat {
 typedef struct _VC2DecoderTransformParams {
   uint32_t wavelet_index;
   uint32_t wavelet_depth;
+
   uint32_t slices_x;
   uint32_t slices_y;
 
@@ -298,6 +299,15 @@ typedef struct _VC2DecoderTransformParams {
   uint32_t quant_matrix_HL[MAX_DWT_DEPTH];
   uint32_t quant_matrix_LH[MAX_DWT_DEPTH];
   uint32_t quant_matrix_HH[MAX_DWT_DEPTH];
+
+  /* V3.0 specific entries:
+     These entries will always be set to 0
+     for streams with major_version < 3 */
+  int asym_transform_index_flag;
+  uint32_t wavelet_index_ho;
+
+  int asym_transform_flag;
+  uint32_t wavelet_depth_ho;
 } VC2DecoderTransformParams;
 
 /**
