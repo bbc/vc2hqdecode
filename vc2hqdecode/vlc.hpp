@@ -47,7 +47,10 @@ typedef void (*SliceDecoderFunc)(QuantisationMatrix *matrices,
 typedef SliceDecoderFunc (*GetSliceDecoderFunc)(int sample_size);
 
 /* These are noddy implementations used only in decoding configuration data */
-inline bool     read_bool(uint8_t *&data, int &bitnum) {
+inline bool     read_bool(uint8_t *&data, int &bitnum, const uint8_t *end) {
+  if (data >= end)
+    return true;
+
   bool r;
   if ((((*data) >> bitnum)&0x1) == 0x1)
     r = true;
@@ -70,11 +73,11 @@ inline void byte_align(uint8_t *&data, int &bitnum) {
   }
 }
 
-inline uint32_t read_uint(uint8_t *&data, int &bitnum) {
+inline uint32_t read_uint(uint8_t *&data, int &bitnum, const uint8_t *end) {
   uint32_t r = 1;
-  while(!read_bool(data, bitnum)) {
+  while(!read_bool(data, bitnum, end)) {
     r <<= 1;
-    if (read_bool(data, bitnum)) {
+    if (read_bool(data, bitnum, end)) {
       r |= 1;
     }
   }

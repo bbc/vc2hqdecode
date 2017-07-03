@@ -47,10 +47,10 @@ VC2DecoderHandle vc2decode_create() {
   return (VC2DecoderHandle)decoder;
 }
 
-VC2DecoderResult vc2decode_parse_info(char *data, VC2DecoderParseSegment *seg) {
+VC2DecoderResult vc2decode_parse_info(char *data, const int length, VC2DecoderParseSegment *seg) {
   try {
-
-    *seg = parse_info(data);
+    const char *end = data + length;
+    *seg = parse_info(data, end);
     return VC2DECODER_OK;
 
   } catch (VC2DecoderResult &r) {
@@ -78,10 +78,11 @@ VC2DecoderResult vc2decode_set_parameters(VC2DecoderHandle handle, VC2DecoderPar
   VC2DECODER_END
 }
 
-VC2DecoderResult vc2decode_parse_seqheader(VC2DecoderHandle handle, char *idata) {
+VC2DecoderResult vc2decode_parse_seqheader(VC2DecoderHandle handle, char *idata, int ilength) {
   VC2DECODER_BEGIN
 
-  decoder->parseSeqHeader(idata);
+  const char *iend = idata + ilength;
+  decoder->parseSeqHeader(idata, iend);
   return VC2DECODER_OK;
 
   VC2DECODER_END

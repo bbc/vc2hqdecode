@@ -109,7 +109,7 @@ public:
   void setUserParams(VC2DecoderParamsUser &params);
   void setVideoFormat(VC2DecoderParamsInternal &params);
   void setParams(VC2DecoderParamsInternal &params);
-  bool parseSeqHeader(char *_idata);
+  bool parseSeqHeader(char *_idata, const char *end);
   VC2DecoderOutputFormat getOutputFormat() { return mOutputFormat; }
 
   uint64_t decodeFrame(char *idata, int ilength, uint16_t **odata, int *ostride);
@@ -125,7 +125,7 @@ public:
   int sequenceExtractAux(char **idata, int ilength, uint8_t **odata);
 
 protected:
-  int processTransformParams(uint8_t *_idata, int ilength);
+  int processTransformParams(uint8_t *_idata, int ilength) throw (VC2DecoderResult);
 
   uint64_t SliceInput(char *idata, int ilength, JobData **jobs);
   uint64_t SliceInputFragment(char *idata, int ilength, int n_slices, int x_offset, int y_offset, JobData **jobs);

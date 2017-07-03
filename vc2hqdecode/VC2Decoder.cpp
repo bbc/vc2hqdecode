@@ -145,19 +145,22 @@ VC2DecoderSequenceResult VC2Decoder::sequenceSynchronise(char **_idata, int ilen
   VC2DecoderParseSegment pi;
 
   char *idata = *_idata;
+  const char *iend = *_idata + ilength;
   int offset = 0;
 
   while (offset < ilength) {
     try {
-      pi = parse_info(&idata[offset]);
+      pi = parse_info(&idata[offset], iend);
     }
     catch (VC2DecoderResult &r) {
       if (r == VC2DECODER_NOTPARSEINFO) {
         offset++;
         continue;
       }
-      else
-        throw;
+      else {
+        writelog(LOG_ERROR, "%s:%d: Error whilst parsing info headers in stream", __FILE__, __LINE__);
+        throw r;
+      }
     }
     switch (pi.parse_code) {
     case VC2DECODER_PARSE_CODE_SEQUENCE_HEADER:
@@ -184,7 +187,7 @@ VC2DecoderSequenceResult VC2Decoder::sequenceSynchronise(char **_idata, int ilen
     return VC2DECODER_EOS;
   }
 
-  parseSeqHeader(pi.data);
+  parseSeqHeader(pi.data, pi.data + pi.data_length);
 
   *_idata = pi.next_header;
 
@@ -195,19 +198,22 @@ char *VC2Decoder::FindNextParseInfo(char *_idata, int ilength) {
   VC2DecoderParseSegment pi;
 
   char *idata = _idata;
+  char *iend  = _idata + ilength;
   int offset = 0;
 
   while (offset < ilength) {
     try {
-      pi = parse_info(&idata[offset]);
+      pi = parse_info(&idata[offset], iend);
     }
     catch (VC2DecoderResult &r) {
       if (r == VC2DECODER_NOTPARSEINFO) {
         offset++;
         continue;
       }
-      else
+      else {
+        writelog(LOG_ERROR, "%s:%d: Error seeking parse info headers", __FILE__, __LINE__);
         throw;
+      }
     }
     break;
   }
@@ -226,14 +232,14 @@ VC2DecoderSequenceResult VC2Decoder::sequenceDecodeOnePicture(char **_idata, int
 
   try {
     while (idata < *(_idata)+ilength) {
-      pi = parse_info(idata);
+      pi = parse_info(idata, iend);
       if ((uint64_t)idata >(uint64_t)iend) {
         writelog(LOG_ERROR, "%s:%d:  Data Unit is off end of input data\n", __FILE__, __LINE__);
         throw VC2DECODER_CODEROVERRUN;
       }
       switch (pi.parse_code) {
       case VC2DECODER_PARSE_CODE_SEQUENCE_HEADER:
-        if (parseSeqHeader(pi.data)) {
+        if (parseSeqHeader(pi.data, pi.data + pi.data_length)) {
           *_idata = pi.next_header;
           return VC2DECODER_RECONFIGURED;
         }
@@ -300,6 +306,9 @@ VC2DecoderSequenceResult VC2Decoder::sequenceDecodeOnePicture(char **_idata, int
     if (r == VC2DECODER_NOTPARSEINFO) {
       writelog(LOG_ERROR, "%s:%d:  No Parse Info Header Where One was Expected\n", __FILE__, __LINE__);
       throw VC2DECODER_BADSTREAM;
+    } else if (r == VC2DECODER_CODEROVERRUN) {
+      writelog(LOG_ERROR, "%s:%d:  Parse Info header runs off end of stream", __FILE__, __LINE__);
+      throw VC2DECODER_CODEROVERRUN;
     }
     throw;
   }
@@ -312,11 +321,17 @@ VC2DecoderSequenceResult VC2Decoder::sequenceDecodeOnePicture(char **_idata, int
 int VC2Decoder::sequenceExtractAux(char **_idata, int ilength, uint8_t **odata) {
   VC2DecoderParseSegment pi;
   char *idata = *_idata;
+  const char *iend = *_idata + ilength;
 
   if (ilength < 13)
     throw VC2DECODER_CODEROVERRUN;
 
-  pi = parse_info(idata);
+  try {
+    pi = parse_info(idata, iend);
+  } catch (VC2DecoderResult &r) {
+    writelog(LOG_ERROR, "%s:%d: Error searching for valid parse_info headers", __FILE__, __LINE__);
+    throw VC2DECODER_BADSTREAM;
+  }
 
   if (pi.parse_code != VC2DECODER_PARSE_CODE_AUXILIARY_DATA) {
     throw VC2DECODER_NOTPARSEINFO;
@@ -331,24 +346,25 @@ int VC2Decoder::sequenceExtractAux(char **_idata, int ilength, uint8_t **odata) 
   return pi.next_header - pi.data;
 }
 
-bool VC2Decoder::parseSeqHeader(char *_idata) {
-#define EXPECT_VAL(N) { uint32_t d = read_uint(idata, bits);\
+bool VC2Decoder::parseSeqHeader(char *_idata, const char *_iend) {
+#define EXPECT_VAL(N) { uint32_t d = read_uint(idata, bits, iend); \
     if (d != (N)) {\
       writelog(LOG_WARN, "%s:%d:  Expected %d, got %d when parsing sequence header\n", __FILE__, __LINE__, (N), d); \
     }\
   }
 
   uint8_t *idata = (uint8_t *)_idata;
+  const uint8_t *iend  = (const uint8_t *)_iend;
   if ((!mSeqHeaderEncoded) || mSeqHeaderEncodedLength == 0 || (memcmp(mSeqHeaderEncoded, idata, mSeqHeaderEncodedLength) != 0)) {
     writelog(LOG_INFO, "Processing Sequence Header");
     int bits = 7;
-    uint32_t major_version = read_uint(idata, bits);
+    uint32_t major_version = read_uint(idata, bits, iend);
     if (major_version < 2 || major_version > 3) {
       writelog(LOG_WARN, "%s:%d: Expected 2 or 3, got %d when parsing major_version from sequence header\n", __FILE__, __LINE__, major_version);
     }
     EXPECT_VAL(0);
     EXPECT_VAL(3);
-    int level = read_uint(idata, bits);
+    int level = read_uint(idata, bits, iend);
     if (level != 3 && level != 6) {
       writelog(LOG_WARN, "%s:%d: Expected 3 or 6, got %d when reading level\n", __FILE__, __LINE__, level);
     }
@@ -358,83 +374,83 @@ bool VC2Decoder::parseSeqHeader(char *_idata) {
     VC2DecoderParamsInternal params;
     params = mParams;
 
-    params.video_format.base_video_format = read_uint(idata, bits);
+    params.video_format.base_video_format = read_uint(idata, bits, iend);
 
-    params.video_format.custom_dimensions_flag = read_bool(idata, bits);
+    params.video_format.custom_dimensions_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_dimensions_flag) {
-      params.video_format.frame_width = read_uint(idata, bits);
-      params.video_format.frame_height = read_uint(idata, bits);
+      params.video_format.frame_width = read_uint(idata, bits, iend);
+      params.video_format.frame_height = read_uint(idata, bits, iend);
     }
 
-    params.video_format.custom_color_diff_format_flag = read_bool(idata, bits);
+    params.video_format.custom_color_diff_format_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_color_diff_format_flag) {
-      params.video_format.color_diff_format_index = read_uint(idata, bits);
+      params.video_format.color_diff_format_index = read_uint(idata, bits, iend);
     }
 
-    params.video_format.custom_scan_format_flag = read_bool(idata, bits);
+    params.video_format.custom_scan_format_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_scan_format_flag) {
-      params.video_format.source_sampling = read_uint(idata, bits);
+      params.video_format.source_sampling = read_uint(idata, bits, iend);
     }
 
-    params.video_format.custom_frame_rate_flag = read_bool(idata, bits);
+    params.video_format.custom_frame_rate_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_frame_rate_flag) {
-      params.video_format.frame_rate_index = read_uint(idata, bits);
+      params.video_format.frame_rate_index = read_uint(idata, bits, iend);
       if (params.video_format.frame_rate_index == 0) {
-        params.video_format.frame_rate_numer = read_uint(idata, bits);
-        params.video_format.frame_rate_denom = read_uint(idata, bits);
+        params.video_format.frame_rate_numer = read_uint(idata, bits, iend);
+        params.video_format.frame_rate_denom = read_uint(idata, bits, iend);
       }
     }
 
-    params.video_format.custom_pixel_aspect_ratio_flag = read_bool(idata, bits);
+    params.video_format.custom_pixel_aspect_ratio_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_pixel_aspect_ratio_flag) {
-      params.video_format.pixel_aspect_ratio_index = read_uint(idata, bits);
+      params.video_format.pixel_aspect_ratio_index = read_uint(idata, bits, iend);
       if (params.video_format.pixel_aspect_ratio_index == 0) {
-        params.video_format.pixel_aspect_ratio_numer = read_uint(idata, bits);
-        params.video_format.pixel_aspect_ratio_denom = read_uint(idata, bits);
+        params.video_format.pixel_aspect_ratio_numer = read_uint(idata, bits, iend);
+        params.video_format.pixel_aspect_ratio_denom = read_uint(idata, bits, iend);
       }
     }
 
-    params.video_format.custom_clean_area_flag = read_bool(idata, bits);
+    params.video_format.custom_clean_area_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_clean_area_flag) {
-      params.video_format.clean_width = read_uint(idata, bits);
-      params.video_format.clean_height = read_uint(idata, bits);
-      params.video_format.left_offset = read_uint(idata, bits);
-      params.video_format.top_offset = read_uint(idata, bits);
+      params.video_format.clean_width = read_uint(idata, bits, iend);
+      params.video_format.clean_height = read_uint(idata, bits, iend);
+      params.video_format.left_offset = read_uint(idata, bits, iend);
+      params.video_format.top_offset = read_uint(idata, bits, iend);
     }
 
-    params.video_format.custom_signal_range_flag = read_bool(idata, bits);
+    params.video_format.custom_signal_range_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_signal_range_flag) {
-      params.video_format.signal_range_index = read_uint(idata, bits);
+      params.video_format.signal_range_index = read_uint(idata, bits, iend);
       if (params.video_format.signal_range_index == 0) {
-        params.video_format.luma_offset = read_uint(idata, bits);
-        params.video_format.luma_excursion = read_uint(idata, bits);
-        params.video_format.color_diff_offset = read_uint(idata, bits);
-        params.video_format.color_diff_excursion = read_uint(idata, bits);
+        params.video_format.luma_offset = read_uint(idata, bits, iend);
+        params.video_format.luma_excursion = read_uint(idata, bits, iend);
+        params.video_format.color_diff_offset = read_uint(idata, bits, iend);
+        params.video_format.color_diff_excursion = read_uint(idata, bits, iend);
       }
     }
 
-    params.video_format.custom_color_spec_flag = read_bool(idata, bits);
+    params.video_format.custom_color_spec_flag = read_bool(idata, bits, iend);
     if (params.video_format.custom_color_spec_flag) {
-      params.video_format.color_spec_index = read_uint(idata, bits);
+      params.video_format.color_spec_index = read_uint(idata, bits, iend);
       if (params.video_format.color_spec_index == 0) {
-        params.video_format.custom_color_primaries_flag = read_bool(idata, bits);
+        params.video_format.custom_color_primaries_flag = read_bool(idata, bits, iend);
         if (params.video_format.custom_color_primaries_flag) {
-          params.video_format.color_primaries_index = read_uint(idata, bits);
+          params.video_format.color_primaries_index = read_uint(idata, bits, iend);
         }
 
-        params.video_format.custom_color_matrix_flag = read_bool(idata, bits);
+        params.video_format.custom_color_matrix_flag = read_bool(idata, bits, iend);
         if (params.video_format.custom_color_matrix_flag) {
-          params.video_format.color_matrix_index = read_uint(idata, bits);
+          params.video_format.color_matrix_index = read_uint(idata, bits, iend);
         }
 
-        params.video_format.custom_transfer_function_flag = read_bool(idata, bits);
+        params.video_format.custom_transfer_function_flag = read_bool(idata, bits, iend);
         if (params.video_format.custom_transfer_function_flag) {
-          params.video_format.transfer_function_index = read_uint(idata, bits);
+          params.video_format.transfer_function_index = read_uint(idata, bits, iend);
         }
       }
     }
 
-    uint32_t picture_coding_mode = read_uint(idata, bits);
+    uint32_t picture_coding_mode = read_uint(idata, bits, iend);
     mInterlaced = (picture_coding_mode != 0);
 
     mParams = params;
@@ -596,6 +612,43 @@ void VC2Decoder::setVideoFormat(VC2DecoderParamsInternal &params) {
 
 void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
   int sample_size = 2;
+
+  /* Check validity of parameters */
+#define ASSERTPARAM(COND, MSG, ...) { if (!(COND)) { writelog(LOG_ERROR, "%s:%d: Invalid Parameter in Stream: " #MSG , __FILE__, __LINE__, ##__VA_ARGS__); throw VC2DECODER_DECODE_FAILED;; } }
+
+  try{
+  ASSERTPARAM(params.slice_prefix_bytes >= 0, "Slice Prefix is negative");
+  ASSERTPARAM(params.slice_size_scalar >= 0, "Slice Size Scaler is negative");
+  ASSERTPARAM(params.threads >= 0, "Number of threads is negative");
+
+  ASSERTPARAM(params.video_format.base_video_format >= VC2DECODER_BVF_CUSTOM && params.video_format.base_video_format <= VC2DECODER_BVF_SDPRO486, "Unknown base video format: %d", params.video_format.base_video_format);
+  ASSERTPARAM(params.video_format.base_video_format >= VC2DECODER_BVF_CUSTOM && params.video_format.base_video_format <= VC2DECODER_BVF_SDPRO486, "Unknown base video format: %d", params.video_format.base_video_format);
+  ASSERTPARAM(!params.video_format.custom_color_diff_format_flag || (params.video_format.color_diff_format_index == 1) , "Color Diff Format Must be 4:2:2");
+  ASSERTPARAM(!params.video_format.custom_scan_format_flag || (params.video_format.source_sampling >= 0 && params.video_format.source_sampling <= 1) , "Invalid custom scan format specified");
+  ASSERTPARAM(!params.video_format.custom_frame_rate_flag || (params.video_format.frame_rate_index >= VC2DECODER_FR_CUSTOM && params.video_format.frame_rate_index <= VC2DECODER_FR_120) , "Invalid custom frame_rate specified");
+  ASSERTPARAM(!params.video_format.custom_pixel_aspect_ratio_flag || (params.video_format.pixel_aspect_ratio_index >= VC2DECODER_PAR_CUSTOM && params.video_format.pixel_aspect_ratio_index <= VC2DECODER_PAR_4_3),
+              "Invalid custom pixel aspect ratio specified");
+  ASSERTPARAM(!params.video_format.custom_signal_range_flag || (params.video_format.signal_range_index >= VC2DECODER_PSR_CUSTOM && params.video_format.signal_range_index <= VC2DECODER_PSR_12BITVID),
+              "Invalid custom signal range specified");
+  ASSERTPARAM(!params.video_format.custom_color_spec_flag || (params.video_format.color_spec_index >= VC2DECODER_CSP_CUSTOM && params.video_format.color_spec_index <= VC2DECODER_CSP_HDRTV_HLG),
+              "Invalid custom colour spec specified");
+  ASSERTPARAM(!params.video_format.custom_color_primaries_flag || (params.video_format.color_primaries_index >= VC2DECODER_CPR_HDTV && params.video_format.color_primaries_index <= VC2DECODER_CPR_UHDTV),
+              "Invalid costom colour primaries specified");
+  ASSERTPARAM(!params.video_format.custom_color_matrix_flag || (params.video_format.color_matrix_index >= VC2DECODER_CMA_HDTV && params.video_format.color_matrix_index <= VC2DECODER_CMA_UHDTV),
+              "Invalid custom colour matrix specified");
+  ASSERTPARAM(!params.video_format.custom_transfer_function_flag || (params.video_format.transfer_function_index >= VC2DECODER_TRF_TVGAMMA && params.video_format.transfer_function_index <= VC2DECODER_TRF_HLG),
+              "Invalid custom transfer function specified");
+
+  ASSERTPARAM(params.transform_params.wavelet_index >= VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7 && params.transform_params.wavelet_index <= VC2DECODER_WFT_DAUBECHIES_9_7,
+              "Invalid wavelet kernel specified");
+  ASSERTPARAM(params.transform_params.wavelet_depth >= 1, "Wavelet Depth must be at least 1");
+  ASSERTPARAM(params.transform_params.slices_x > 0 && params.transform_params.slices_y > 0, "Must have at least one slice");
+  } catch(VC2DecoderResult &r) {
+    writelog(LOG_ERROR, "Error: %d", (int)r);
+    throw;
+  }
+
+#undef ASSERTPARAM
 
   if (params.transform_params.wavelet_index == VC2DECODER_WFT_FIDELITY ||
     params.transform_params.wavelet_index == VC2DECODER_WFT_DAUBECHIES_9_7) {
@@ -847,11 +900,15 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
   for (int l = 0; l < (int)params.transform_params.wavelet_depth - 1; l++)
     transforms_h[l] = get_invhtransform(params.transform_params.wavelet_index, l, params.transform_params.wavelet_depth, sample_size);
 
-  int active_bits;
+  int active_bits = 10;
   if (mOutputFormat.signal_range == VC2DECODER_PSR_10BITVID)
     active_bits = 10;
   else if (mOutputFormat.signal_range == VC2DECODER_PSR_12BITVID)
     active_bits = 12;
+  else {
+    writelog(LOG_ERROR, "%s:%d:  Only 10-bit and 12-bit data are supported", __FILE__, __LINE__);
+    throw VC2DECODER_NOTIMPLEMENTED;
+  }
   transforms_final = get_invhtransformfinal(params.transform_params.wavelet_index, active_bits, sample_size);
 
   if (transforms_v)
@@ -874,42 +931,43 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
 #endif
 }
 
-int VC2Decoder::processTransformParams(uint8_t *_idata, int ilength) {
+int VC2Decoder::processTransformParams(uint8_t *_idata, int ilength)  throw (VC2DecoderResult) {
   (void)ilength;
   uint8_t *idata = (uint8_t *)_idata;
+  const uint8_t *iend = _idata + ilength;
 
   if (!mConfigured || !mTransformParamsEncoded || mTransformParamsEncodedLength == 0 || memcmp(mTransformParamsEncoded, idata, mTransformParamsEncodedLength)) {
     writelog(LOG_INFO, "Processing Transform Params");
     int bits = 7;
     VC2DecoderTransformParams transform_params;
-    transform_params.wavelet_index = read_uint(idata, bits);
-    transform_params.wavelet_depth = read_uint(idata, bits);
+    transform_params.wavelet_index = read_uint(idata, bits, iend);
+    transform_params.wavelet_depth = read_uint(idata, bits, iend);
     if (mMajorVersion >= 3) {
-      transform_params.asym_transform_index_flag = read_bool(idata, bits);
+      transform_params.asym_transform_index_flag = read_bool(idata, bits, iend);
       if (transform_params.asym_transform_index_flag) {
-        transform_params.wavelet_index_ho = read_uint(idata, bits);
+        transform_params.wavelet_index_ho = read_uint(idata, bits, iend);
         writelog(LOG_ERROR, "%s:%d: Asymmetrical transform specified, but this isn't yet implemnted", __FILE__, __LINE__);
         throw VC2DECODER_NOTIMPLEMENTED;
       }
-      transform_params.asym_transform_flag = read_bool(idata, bits);
+      transform_params.asym_transform_flag = read_bool(idata, bits, iend);
       if (transform_params.asym_transform_flag) {
-        transform_params.wavelet_depth_ho = read_uint(idata, bits);
+        transform_params.wavelet_depth_ho = read_uint(idata, bits, iend);
         writelog(LOG_ERROR, "%s:%d: Asymmetrical transform specified, but this isn't yet implemnted", __FILE__, __LINE__);
         throw VC2DECODER_NOTIMPLEMENTED;
       }
     }
-    transform_params.slices_x = read_uint(idata, bits);
-    transform_params.slices_y = read_uint(idata, bits);
-    int prefix_bytes = read_uint(idata, bits);
-    int slice_size_scalar = read_uint(idata, bits);
+    transform_params.slices_x = read_uint(idata, bits, iend);
+    transform_params.slices_y = read_uint(idata, bits, iend);
+    int prefix_bytes = read_uint(idata, bits, iend);
+    int slice_size_scalar = read_uint(idata, bits, iend);
 
-    transform_params.custom_quant_matrix_flag = read_bool(idata, bits);
+    transform_params.custom_quant_matrix_flag = read_bool(idata, bits, iend);
     if (transform_params.custom_quant_matrix_flag) {
-      transform_params.quant_matrix_LL = read_uint(idata, bits);
+      transform_params.quant_matrix_LL = read_uint(idata, bits, iend);
       for (int l = 0; l < (int)transform_params.wavelet_depth - 1; l++) {
-        transform_params.quant_matrix_HL[l] = read_uint(idata, bits);
-        transform_params.quant_matrix_LH[l] = read_uint(idata, bits);
-        transform_params.quant_matrix_HH[l] = read_uint(idata, bits);
+        transform_params.quant_matrix_HL[l] = read_uint(idata, bits, iend);
+        transform_params.quant_matrix_LH[l] = read_uint(idata, bits, iend);
+        transform_params.quant_matrix_HH[l] = read_uint(idata, bits, iend);
       }
     }
     byte_align(idata, bits);
@@ -924,7 +982,12 @@ int VC2Decoder::processTransformParams(uint8_t *_idata, int ilength) {
     params.transform_params = transform_params;
     params.slice_size_scalar = slice_size_scalar;
     params.slice_prefix_bytes = prefix_bytes;
-    setParams(params);
+    try {
+      setParams(params);
+    } catch (VC2DecoderResult &r) {
+      writelog(LOG_ERROR, "Error2: %d", r);
+      throw;
+    }
 
     mSequenceInfo.transform_params = transform_params;
 
@@ -965,7 +1028,12 @@ uint64_t VC2Decoder::decodeFrame(char *_idata, int ilength, uint16_t **odata, in
   mSequenceInfo.last_picture_number = picture_number;
   idata += 4;
 
-  idata += processTransformParams(idata, ilength);
+  try {
+    idata += processTransformParams(idata, ilength);
+  } catch(VC2DecoderResult &r) {
+    writelog(LOG_ERROR, "Error3: %d", r);
+    throw;
+  }
 
   int preamble = idata - (uint8_t*)_idata;
 
@@ -1149,6 +1217,8 @@ uint64_t VC2Decoder::SliceInputFragment(char *_idata, int ilength, int n_slices,
       sy++;
     }
   }
+
+  return (((uint64_t)idata) + 1 + lastlength) - ((uint64_t)_idata);
 }
 
 uint64_t VC2Decoder::SliceInput(char *_idata, int ilength, JobData **jobs) {
