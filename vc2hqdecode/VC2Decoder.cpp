@@ -183,7 +183,7 @@ VC2DecoderSequenceResult VC2Decoder::sequenceSynchronise(char **_idata, int ilen
     break;
   }
 
-  if (offset >= ilength) {
+  if (offset >= ilength || pi.data + pi.data_length > iend) {
     return VC2DECODER_EOS;
   }
 
