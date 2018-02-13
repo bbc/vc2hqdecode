@@ -105,6 +105,11 @@ public:
     if (mSliceJobLUTY) {
       delete[] mSliceJobLUTY;
     }
+
+    if (transforms_v)
+      delete[] transforms_v;
+    if (transforms_h)
+      delete[] transforms_h;
   }
 
   VC2DecoderSequenceInfo getSequenceInfo() { return mSequenceInfo; }
