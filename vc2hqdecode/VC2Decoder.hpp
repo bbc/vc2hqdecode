@@ -70,6 +70,9 @@ public:
     mSliceJobLUTY = NULL;
 
     memset(&mSequenceInfo, 0, sizeof(VC2DecoderSequenceInfo));
+    memset(&mParams, 0, sizeof(mParams));
+    memset(&mVideoFormat, 0, sizeof(mVideoFormat));
+    memset(&mOutputFormat, 0, sizeof(mOutputFormat));
 
     mSampleSize = 0;
     mMajorVersion = 0;
