@@ -65,7 +65,7 @@ AC_MSG_RESULT(yes)
 else
 AC_MSG_RESULT(no)
 		 VC2HQDECODE_CFLAGS="-g -O3 -funroll-loops"
-		 CXXFLAGS="-g -O3 -funroll-loops -Wall"
+		 CXXFLAGS="$CXXFLAGS -g -O3 -funroll-loops -Wall"
      VC2HQDECODE_LDFLAGS=""
 fi
 
