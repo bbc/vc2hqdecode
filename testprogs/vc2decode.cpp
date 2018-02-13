@@ -352,8 +352,8 @@ int main (int argc, char *argv[]) {
       break;
 
     /*If no pictures were decoded bail */
-    if (picture == 0) {
-      fprintf(stderr, "No pictures in sequence!\n");
+    if (picture == 0 || (fmt.interlaced && picture == 1)) {
+      fprintf(stderr, "No complete frames in sequence!\n");
       err = 1;
       break;
     }
