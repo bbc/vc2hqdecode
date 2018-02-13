@@ -74,6 +74,12 @@ int64_t gettime(void)
 
 #include "tclap/CmdLine.h"
 
+#ifdef DEBUG
+#define VERBOSE_PRINT(MSG) if (verbose) printf(MSG "\n")
+#else
+#define VERBOSE_PRINT(MSG)
+#endif
+
 void usage() {
   printf("Usage: vc2decode [options] input_file [output_file]\n");
   printf("  By default the output file will be the input file with .yuv appended\n");
@@ -233,20 +239,17 @@ int main (int argc, char *argv[]) {
     odata[i] = NULL;
   }
 
-
-
-
-  /* Begin the main program loop */
+  VERBOSE_PRINT("Begin the main program loop");
   int err = 0;
   uint64_t time_taken = 0;
   while (total_frames_decoded < num_frames) {
     VC2DecoderResult r;
 
-    /* Reset to the start of the input data */
+    VERBOSE_PRINT("Reset to the start of the input data");
     char *id = idata;
     char *iend = idata + input_length;
 
-    /* We are at the start of a sequence, so synchronise */
+    VERBOSE_PRINT("We are at the start of a sequence, so synchronise");
     r = vc2decode_synchronise(decoder, &id, iend - id, true);
     if (r != VC2DECODER_OK_RECONFIGURED) {
       fprintf(stderr, "Error synchronising to sequence");
@@ -254,7 +257,7 @@ int main (int argc, char *argv[]) {
       break;
     }
 
-    /* We have synchronised, so get the output format */
+    VERBOSE_PRINT("We have synchronised, so get the output format");
     VC2DecoderOutputFormat new_fmt;
     r = vc2decode_get_output_format(decoder, &new_fmt);
     if (r != VC2DECODER_OK) {
@@ -263,11 +266,10 @@ int main (int argc, char *argv[]) {
       break;
     }
 
-    /* Reconfigure output buffers if this format doesn't
-       match the current one */
     if (fmt.width != new_fmt.width ||
         fmt.height != new_fmt.height ||
         fmt.interlaced != new_fmt.interlaced) {
+      VERBOSE_PRINT("Reconfigure output buffers because this format doesn't match the current one");
       fmt = new_fmt;
 
       for (int i = 0; i < num_frames; i++) {
@@ -301,20 +303,20 @@ int main (int argc, char *argv[]) {
       }
     }
 
-    /* Decode Pictures from stream */
+    VERBOSE_PRINT("Decode Pictures from stream");
     int picture = 0;
     int64_t start, end;
     start = gettime();
     while (total_frames_decoded < num_frames) {
       r = vc2decode_decode_one_picture(decoder, &id, iend - id, opics[picture], ostride, true);
 
-      /* If End of Sequence break from loop */
       if (r == VC2DECODER_OK_EOS) {
+        VERBOSE_PRINT("End of Sequence so break from loop");
         break;
       }
 
-      /* If a picture has been sucessfully decoded continue */
       if (r == VC2DECODER_OK_PICTURE) {
+        VERBOSE_PRINT("A picture has been sucessfully decoded so continue");
         if (!fmt.interlaced || (picture%2))
           total_frames_decoded++;
         picture++;
@@ -343,7 +345,7 @@ int main (int argc, char *argv[]) {
       break;
     }
     end = gettime();
-    /* We have reached the end of a sequence, or have decoded enough frames */
+    VERBOSE_PRINT("We have reached the end of a sequence, or have decoded enough frames");
 
     /*If an error has occurred bail */
     if (err)
@@ -356,12 +358,12 @@ int main (int argc, char *argv[]) {
       break;
     }
 
-    /* Otherwise update the record of how many decoded frames have been recorded */
+    VERBOSE_PRINT("Update the record of how many decoded frames have been recorded");
     int num_frames_decoded_from_this_sequence = (fmt.interlaced)?(picture/2):(picture);
     if (num_frames_decoded_from_this_sequence > num_frames_decoded_from_sequence)
       num_frames_decoded_from_sequence = num_frames_decoded_from_this_sequence;
 
-    /* And update the record of time taken to decode */
+    VERBOSE_PRINT("And update the record of time taken to decode");
     time_taken += end - start;
   }
 
