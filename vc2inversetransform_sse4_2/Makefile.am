@@ -5,9 +5,11 @@ libvc2invtransform_sse4_2_la_LDFLAGS = \
 	$(VC2HQDECODE_LDFLAGS) \
 	-lpthread
 
-libvc2invtransform_sse4_2_la_CPPFLAGS = $(VC2HQDECODE_CFLAGS) \
-	$(SSE4_2_FLAGS) \
+libvc2invtransform_sse4_2_la_CPPFLAGS = $(VC2HQDECODE_CPPFLAGS) \
 	-I$(top_srcdir)/vc2hqdecode
+
+libvc2invtransform_sse4_2_la_CXXFLAGS = $(VC2HQDECODE_CXXFLAGS) \
+	$(SSE4_2_FLAGS) 
 
 libvc2invtransform_sse4_2_la_SOURCES = \
 	invtransform_sse4_2.cpp \

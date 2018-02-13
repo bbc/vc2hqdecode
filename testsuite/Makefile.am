@@ -4,7 +4,9 @@ TESTS = vc2decodertest
 
 AM_CFLAGS = $(VC2HQDECODE_CFLAGS)
 
-AM_CXXFLAGS = $(VC2HQDECODE_CFLAGS) \
+AM_CPPFLAGS = $(VC2HQDECODE_CPPFLAGS)
+
+AM_CXXFLAGS = $(VC2HQDECODE_CXXFLAGS) \
 	-I$(top_srcdir)/vc2hqdecode \
 	-I$(top_srcdir)/vc2inversetransform_c/
 

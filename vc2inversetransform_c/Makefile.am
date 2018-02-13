@@ -5,8 +5,10 @@ libvc2invtransform_c_la_LDFLAGS = \
 	$(VC2HQDECODE_LDFLAGS) \
 	-lpthread
 
-libvc2invtransform_c_la_CPPFLAGS = $(VC2HQDECODE_CFLAGS) \
+libvc2invtransform_c_la_CPPFLAGS = $(VC2HQDECODE_CPPFLAGS) \
 	-I$(top_srcdir)/vc2hqdecode
+
+libvc2invtransform_c_la_CXXFLAGS = $(VC2HQDECODE_CXXFLAGS)
 
 libvc2invtransform_c_la_SOURCES = \
 	invtransform_c.cpp \

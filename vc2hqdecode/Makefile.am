@@ -17,8 +17,11 @@ libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_LDFLAGS = \
   -export-symbols-regex 'vc2decode' \
   -lgcc
 
-libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_CPPFLAGS = $(VC2HQDECODE_CFLAGS) \
-							$(REDIST_CFLAGS)
+libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_CPPFLAGS = $(VC2HQDECODE_CPPFLAGS) \
+							$(REDIST_CPPFLAGS)
+
+libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_CXXFLAGS = $(VC2HQDECODE_CXXFLAGS) \
+							$(REDIST_CXXFLAGS)
 
 libvc2hqdecode_@VC2HQDECODE_MAJORMINOR@_la_SOURCES = vc2hqdecode.cpp \
 	logger.cpp \
