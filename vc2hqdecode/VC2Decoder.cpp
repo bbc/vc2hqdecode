@@ -60,6 +60,8 @@ static int DEBUG_P_SLICE_W;
 static int DEBUG_P_SLICE_H;
 #endif
 
+#define MIN(A,B) (((A)<(B))?(A):(B))
+
 uint32_t max_to_active_bits(const uint32_t m) {
   return (32 - __builtin_clz(m));
 }
@@ -787,6 +789,10 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
 
         int PADX_PRE = ((x > 0) ? (mOverlapX*slice_width) : (pixel_margin_pre_x));
         int PADX_POST = ((x < mJobsX - 1) ? 0 : pixel_margin_post_x + pixel_margin_pre_x);
+        int tgt_x = (x*spj_x)*slice_width;
+        int tgt_y = (y*spj_y)*slice_height;
+        int output_w = MIN(s_x*slice_width - PADX_POST, mWidth - tgt_x);
+        int output_h = MIN(s_y*slice_height - PADY_POST, mHeight - tgt_y);
         mJobs[y*mJobsX + x] = new JobData(y*mJobsX + x,
           (pad_xa + s_x + pad_xz)*slice_width,
           (pad_ya + s_y + pad_yz)*slice_height,
@@ -794,8 +800,8 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
           (pad_xa + s_x + pad_xz), (pad_ya + s_y + pad_yz),
           PADX_PRE,
           PADY_PRE,
-          s_x*slice_width - PADX_POST, s_y*slice_height - PADY_POST,
-          (x*spj_x)*slice_width, (y*spj_y)*slice_height,
+          output_w, output_h,
+          tgt_x, tgt_y,
           x*spj_x - pad_xa, y*spj_y - pad_ya,
           sample_size);
 
