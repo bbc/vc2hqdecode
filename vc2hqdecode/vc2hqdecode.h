@@ -134,7 +134,12 @@ enum VC2DecoderFrameRate {
   VC2DECODER_FR_60 = 8,
   VC2DECODER_FR_15000_1001 = 9,
   VC2DECODER_FR_25_2 = 10,
-  VC2DECODER_FR_48 = 11
+  VC2DECODER_FR_48 = 11,
+  VC2DECODER_FR_48000_1001 = 12,
+  VC2DECODER_FR_96 = 13,
+  VC2DECODER_FR_100 = 14,
+  VC2DECODER_FR_120000_1001 = 15,
+  VC2DECODER_FR_120 = 16
 };
 
 enum VC2DecoderPresetSignalRange {
@@ -201,32 +206,39 @@ enum VC2DecoderPixelAspect {
 };
 
 enum VC2DecoderColorSpec {
-  VC2DECODER_CSP_CUSTOM  = 0,
-  VC2DECODER_CSP_SDTV525 = 1,
-  VC2DECODER_CSP_SDTV625 = 2,
-  VC2DECODER_CSP_HDTV    = 3,
-  VC2DECODER_CSP_DCINE   = 4
+  VC2DECODER_CSP_CUSTOM    = 0,
+  VC2DECODER_CSP_SDTV525   = 1,
+  VC2DECODER_CSP_SDTV625   = 2,
+  VC2DECODER_CSP_HDTV      = 3,
+  VC2DECODER_CSP_DCINE     = 4,
+  VC2DECODER_CSP_UHDTV     = 5,
+  VC2DECODER_CSP_HDRTV_PQ  = 6,
+  VC2DECODER_CSP_HDRTV_HLG = 7
 };
 
 enum VC2DecoderColorPrimaries {
   VC2DECODER_CPR_HDTV    = 0,
   VC2DECODER_CPR_SDTV525 = 1,
   VC2DECODER_CPR_SDTV625 = 2,
-  VC2DECODER_CPR_DCINE   = 3
+  VC2DECODER_CPR_DCINE   = 3,
+  VC2DECODER_CPR_UHDTV   = 4
 };
 
 enum VC2DecoderColorMatrix {
   VC2DECODER_CMA_HDTV       = 0,
   VC2DECODER_CMA_SDTV       = 1,
   VC2DECODER_CMA_REVERSIBLE = 2,
-  VC2DECODER_CMA_RGB        = 3
+  VC2DECODER_CMA_RGB        = 3,
+  VC2DECODER_CMA_UHDTV      = 4
 };
 
 enum VC2DecoderTransferFunction {
   VC2DECODER_TRF_TVGAMMA  = 0,
   VC2DECODER_TRF_EXTGAMUT = 1,
   VC2DECODER_TRF_LINEAR   = 2,
-  VC2DECODER_TRF_DCINE    = 3
+  VC2DECODER_TRF_DCINE    = 3,
+  VC2DECODER_TRF_PQ       = 4,
+  VC2DECODER_TRF_HLG      = 5
 };
 
 typedef struct VC2DecoderVideoFormat {
@@ -290,6 +302,7 @@ typedef struct VC2DecoderVideoFormat {
 typedef struct VC2DecoderTransformParams {
   uint32_t wavelet_index;
   uint32_t wavelet_depth;
+
   uint32_t slices_x;
   uint32_t slices_y;
 
@@ -298,6 +311,15 @@ typedef struct VC2DecoderTransformParams {
   uint32_t quant_matrix_HL[MAX_DWT_DEPTH];
   uint32_t quant_matrix_LH[MAX_DWT_DEPTH];
   uint32_t quant_matrix_HH[MAX_DWT_DEPTH];
+
+  /* V3.0 specific entries:
+     These entries will always be set to 0
+     for streams with major_version < 3 */
+  int asym_transform_index_flag;
+  uint32_t wavelet_index_ho;
+
+  int asym_transform_flag;
+  uint32_t wavelet_depth_ho;
 } VC2DecoderTransformParams;
 
 /**
@@ -423,7 +445,7 @@ typedef struct VC2DecoderLoggers {
  * detection of CPU features in order to determine which versions of
  * certain functions to make use of
  */
-VC2HQDECODE_API void vc2decode_init();
+VC2HQDECODE_API void vc2decode_init(void);
 
 
 /**
@@ -442,7 +464,7 @@ VC2HQDECODE_API void vc2decode_init_logging(VC2DecoderLoggers);
  * general this is not likely to be required unless decoding multiple streams
  * in parallel.
  */
-VC2HQDECODE_API VC2DecoderHandle vc2decode_create();
+VC2HQDECODE_API VC2DecoderHandle vc2decode_create(void);
 
 
 /**

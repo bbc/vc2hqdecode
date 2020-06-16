@@ -5,7 +5,7 @@ include doxygen.am
 
 SUBDIRS = redist vc2inversetransform_c vc2inversetransform_sse4_2 vc2hqdecode testprogs tools testsuite
 
-EXTRA_DIST = COPYING autogen.sh
+EXTRA_DIST = CONTRIBUTING COPYING autogen.sh
 
 pkgconfig_DATA = vc2hqdecode-$(VC2HQDECODE_MAJORMINOR).pc
 

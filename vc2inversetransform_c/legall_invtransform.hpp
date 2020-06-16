@@ -221,7 +221,7 @@ template<int skip, class T>void LeGall_5_3_invtransform_H_inplace(void *_idata,
   }
 }
 
-template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
+template<int active_bits, class T> void LeGall_5_3_invtransform_H_final_1(void *_idata,
                                                             const int istride,
                                                             const char *odata,
                                                             const int ostride,
@@ -233,6 +233,8 @@ template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
                                                             const int oheight) {
   T *idata = (T *)_idata;
   const int skip = 1;
+  const uint16_t clip = (1 << active_bits) - 1;
+  const uint16_t offset = 1 << (active_bits - 1);
 
   for (int y = ooffset_y; y < iheight && y < ooffset_y + oheight; y+=skip) {
     int32_t Dm1, D, Dp1, Dp2;
@@ -246,7 +248,7 @@ template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
     {
       X   = D   - ((Dm1 + Dp1 + 2) >> 2);
       if (x >= ooffset_x)
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X + 1) >> 1) + offset), 0), clip);
 
       Xm2 = X;
       Dm1 = Dp1;
@@ -261,9 +263,9 @@ template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
       Xm1 = Dm1 + ((Xm2 + X   + 1) >> 1);
 
       if (x - 1*skip >= ooffset_x && x - 1*skip < ooffset_x + owidth)
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + offset), 0), clip);
       if (x  >= ooffset_x && x < ooffset_x + owidth)
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X   + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X   + 1) >> 1) + offset), 0), clip);
 
 
       Xm2 = X;
@@ -278,8 +280,8 @@ template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
       Xm1 = Dm1 + ((Xm2 + X   + 1) >> 1);
 
       if (x < ooffset_x + owidth) {
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + (1 << 9)), 0), 0x3ff);
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X   + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + offset), 0), clip);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X   + 1) >> 1) + offset), 0), clip);
       }
 
       Xm2 = X;
@@ -294,9 +296,9 @@ template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
       Xm1 = Dm1 + ((Xm2 + X   + 1) >> 1);
 
       if (x - 1 < ooffset_x + owidth)
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + offset), 0), clip);
       if (x < ooffset_x + owidth)
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X   + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x + 0*skip)] = (uint16_t)MIN(MAX((((X   + 1) >> 1) + offset), 0), clip);
 
       Xm2 = X;
       Dm1 = Dp1;
@@ -309,7 +311,7 @@ template<class T> void LeGall_5_3_invtransform_H_final_1_10(void *_idata,
       Xm1 = Dm1 + ((Xm2 + X   + 1) >> 1);
 
       if (x - 1 < ooffset_x + owidth)
-        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + (1 << 9)), 0), 0x3ff);
+        ((uint16_t *)odata)[((y - ooffset_y)*ostride + x - ooffset_x - 1*skip)] = (uint16_t)MIN(MAX((((Xm1 + 1) >> 1) + offset), 0), clip);
     }
   }
 }

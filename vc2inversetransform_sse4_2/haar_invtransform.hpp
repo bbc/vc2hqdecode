@@ -30,10 +30,6 @@
 #include <x86intrin.h>
 #endif // _WIN32
 
-#define MIN(A,B) (((A)>(B))?(B):(A))
-#define MAX(A,B) (((A)<(B))?(B):(A))
-
-
 template<int skip>void Haar_invtransform_V_inplace_sse4_2(void *_idata,
                                                         const int istride,
                                                         const int width,
@@ -60,20 +56,20 @@ template<>void Haar_invtransform_V_inplace_sse4_2<1>(void *_idata,
   }
 }
 
-template<int shift> void Haar_invtransform_H_final_1_10_sse4_2_int32_t(void *_idata,
-                                                                       const int istride,
-                                                                       const char *odata,
-                                                                       const int ostride,
-                                                                       const int iwidth,
-                                                                       const int iheight,
-                                                                       const int ooffset_x,
-                                                                       const int ooffset_y,
-                                                                       const int owidth,
-                                                                       const int oheight) {
+template<int shift, int active_bits> void Haar_invtransform_H_final_1_sse4_2_int32_t(void *_idata,
+																			   const int istride,
+																			   const char *odata,
+																			   const int ostride,
+																			   const int iwidth,
+																			   const int iheight,
+																			   const int ooffset_x,
+																			   const int ooffset_y,
+																			   const int owidth,
+																			   const int oheight) {
   int32_t *idata = (int32_t *)_idata;
   const int skip = 1;
   const __m128i ONE = _mm_set1_epi32(1);
-  const __m128i OFFSET = _mm_set1_epi32(1 << 9);
+  const __m128i OFFSET = _mm_set1_epi32(1 << (active_bits - 1));
 
   (void)iwidth;
   (void)iheight;
@@ -105,18 +101,18 @@ template<int shift> void Haar_invtransform_H_final_1_10_sse4_2_int32_t(void *_id
       Z0 = _mm_add_epi32(Z0, OFFSET);
       Z4 = _mm_add_epi32(Z4, OFFSET);
 
-      Z0 = _mm_slli_epi32(Z0, 6);
-      Z4 = _mm_slli_epi32(Z4, 6);
+      Z0 = _mm_slli_epi32(Z0, (16 - active_bits));
+      Z4 = _mm_slli_epi32(Z4, (16 - active_bits));
 
       __m128i R = _mm_packus_epi32(Z0, Z4);
 
-      R = _mm_srli_epi16(R, 6);
+      R = _mm_srli_epi16(R, (16 - active_bits));
       _mm_store_si128((__m128i *)&odata[2*((y - ooffset_y)*ostride + x - ooffset_x)], R);
     }
   }
 }
 
-template<int shift> void Haar_invtransform_H_final_1_10_sse4_2_int16_t(void *_idata,
+template<int shift, int active_bits> void Haar_invtransform_H_final_1_sse4_2_int16_t(void *_idata,
                                                                        const int istride,
                                                                        const char *odata,
                                                                        const int ostride,
@@ -129,10 +125,10 @@ template<int shift> void Haar_invtransform_H_final_1_10_sse4_2_int16_t(void *_id
   int16_t *idata = (int16_t *)_idata;
   const int skip = 1;
   const __m128i ONE = _mm_set1_epi16(1);
-  const __m128i OFFSET = _mm_set1_epi16(1 << 9);
+  const __m128i OFFSET = _mm_set1_epi16(1 << (active_bits - 1));
   const __m128i SHUF = _mm_set_epi8(15,14, 11,10, 7,6, 3,2,
                                     13,12,   9,8, 5,4, 1,0);
-  const __m128i CLIP = _mm_set1_epi16(0x3FF);
+  const __m128i CLIP = _mm_set1_epi16((1 << active_bits) - 1);
   const __m128i ZERO = _mm_set1_epi16(0);
 
   (void)iwidth;

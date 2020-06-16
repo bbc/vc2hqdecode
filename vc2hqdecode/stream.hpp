@@ -28,6 +28,6 @@
 
 #include "internal.h"
 
-VC2DecoderParseSegment parse_info(char *data);
+VC2DecoderParseSegment parse_info(char *data, const char *end);
 
 #endif /* __STREAM_HPP__ */

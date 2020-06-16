@@ -85,6 +85,8 @@ const uint8_t VC2DECODER_PARSE_CODE_CORE_PICTURE_AC  = 0x08;
 const uint8_t VC2DECODER_PARSE_CODE_CORE_PICTURE_VLC = 0x48;
 const uint8_t VC2DECODER_PARSE_CODE_LD_PICTURE       = 0xC8;
 const uint8_t VC2DECODER_PARSE_CODE_HQ_PICTURE       = 0xE8;
+const uint8_t VC2DECODER_PARSE_CODE_LD_FRAGMENT      = 0xCC;
+const uint8_t VC2DECODER_PARSE_CODE_HQ_FRAGMENT      = 0xEC;
 
 typedef struct _VC2DecoderParseSegment {
   uint8_t parse_code;

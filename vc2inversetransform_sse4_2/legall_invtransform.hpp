@@ -205,18 +205,7 @@ void LeGall_5_3_invtransform_H_inplace_1_sse4_2(void *_idata,
   }
 }
 
-template<class T> void LeGall_5_3_invtransform_H_final_1_10_sse4_2(void *_idata,
-                                                                   const int istride,
-                                                                   const char *odata,
-                                                                   const int ostride,
-                                                                   const int iwidth,
-                                                                   const int iheight,
-                                                                   const int ooffset_x,
-                                                                   const int ooffset_y,
-                                                                   const int owidth,
-                                                                   const int oheight);
-
-template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int32_t>(void *_idata,
+template<int active_bits> void LeGall_5_3_invtransform_H_final_1_10_sse4_2_int32_t(void *_idata,
                                                                      const int istride,
                                                                      const char *odata,
                                                                      const int ostride,
@@ -227,7 +216,7 @@ template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int32_t>(void *_idat
                                                                      const int owidth,
                                                                      const int oheight){
   int32_t *idata = (int32_t *)_idata;
-  const __m128i OFFSET = _mm_set1_epi32((1 << 9));
+  const __m128i OFFSET = _mm_set1_epi32((1 << (active_bits - 1)));
   const __m128i ONE = _mm_set1_epi32(1);
   const __m128i TWO = _mm_set1_epi32(2);
 
@@ -278,9 +267,9 @@ template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int32_t>(void *_idat
         ZO1 = _mm_add_epi32(O1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(ZE0, ZE2), ONE), 1)); // {  1  3  5  7 }
 
 
-        Z0  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi32(ZE0, ZO1), ONE), 1), OFFSET), 6); // {  0  1  2  3 }
-        Z4  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi32(ZE0, ZO1), ONE), 1), OFFSET), 6); // {  4  5  6  7 }
-        ZZ0 = _mm_srli_epi16(_mm_packus_epi32(Z0, Z4), 6);
+        Z0  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi32(ZE0, ZO1), ONE), 1), OFFSET), (16 - active_bits)); // {  0  1  2  3 }
+        Z4  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi32(ZE0, ZO1), ONE), 1), OFFSET), (16 - active_bits)); // {  4  5  6  7 }
+        ZZ0 = _mm_srli_epi16(_mm_packus_epi32(Z0, Z4), (16 - active_bits));
         _mm_storeu_si128((__m128i *)&odata[((y - ooffset_y)*ostride + x - ooffset_x)*2], ZZ0);
       }
       _mm_prefetch((char *)&idata[y*istride + x + 16], _MM_HINT_T0);
@@ -294,15 +283,15 @@ template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int32_t>(void *_idat
       ZO1 = _mm_add_epi32(O1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(ZE0, ZE2), ONE), 1)); // {  1  3  5  7 }
 
 
-      Z0  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi32(ZE0, ZO1), ONE), 1), OFFSET), 6); // {  0  1  2  3 }
-      Z4  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi32(ZE0, ZO1), ONE), 1), OFFSET), 6); // {  4  5  6  7 }
-      ZZ0 = _mm_srli_epi16(_mm_packus_epi32(Z0, Z4), 6);
+      Z0  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpacklo_epi32(ZE0, ZO1), ONE), 1), OFFSET), (16 - active_bits)); // {  0  1  2  3 }
+      Z4  = _mm_slli_epi32(_mm_add_epi32(_mm_srai_epi32(_mm_add_epi32(_mm_unpackhi_epi32(ZE0, ZO1), ONE), 1), OFFSET), (16 - active_bits)); // {  4  5  6  7 }
+      ZZ0 = _mm_srli_epi16(_mm_packus_epi32(Z0, Z4), (16 - active_bits));
       _mm_storeu_si128((__m128i *)&odata[((y - ooffset_y)*ostride + x - ooffset_x)*2], ZZ0);
     }
   }
 }
 
-template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int16_t>(void *_idata,
+template<int active_bits> void LeGall_5_3_invtransform_H_final_1_10_sse4_2_int16_t(void *_idata,
                                                                      const int istride,
                                                                      const char *odata,
                                                                      const int ostride,
@@ -316,7 +305,7 @@ template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int16_t>(void *_idat
   const __m128i TWO = _mm_set1_epi16(2);
   const __m128i SHUF = _mm_set_epi8(15,14, 11,10, 7,6, 3,2,
                                     13,12,   9,8, 5,4, 1,0);
-  const __m128i CLIP = _mm_set1_epi16(0x3FF);
+  const __m128i CLIP = _mm_set1_epi16((1 << active_bits) - 1);
 
   const int skip = 1;
   for (int y = ooffset_y; y < iheight && y < ooffset_y + oheight; y+=skip) {
@@ -369,7 +358,7 @@ template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int16_t>(void *_idat
         ZO1 = _mm_add_epi16(O1, _mm_srai_epi16(_mm_add_epi16(_mm_add_epi16(ZE0, ZE2), ONE), 1));
 
         __m128i ZERO = _mm_srai_epi16(TWO, 2);
-        __m128i OFFSET = _mm_slli_epi16(TWO, 8);
+        __m128i OFFSET = _mm_slli_epi16(TWO, active_bits - 2);
         Z0  = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(_mm_srai_epi16(_mm_add_epi16(_mm_unpacklo_epi16(ZE0, ZO1), ONE), 1), OFFSET), CLIP), ZERO);
         Z8  = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(_mm_srai_epi16(_mm_add_epi16(_mm_unpackhi_epi16(ZE0, ZO1), ONE), 1), OFFSET), CLIP), ZERO);
         _mm_storeu_si128((__m128i *)&odata[((y - ooffset_y)*ostride + x + 0 - ooffset_x)*2], Z0);
@@ -387,7 +376,7 @@ template<> void LeGall_5_3_invtransform_H_final_1_10_sse4_2<int16_t>(void *_idat
       ZO1 = _mm_add_epi16(O1, _mm_srai_epi16(_mm_add_epi16(_mm_add_epi16(ZE0, ZE2), ONE), 1));
 
       __m128i ZERO = _mm_srai_epi16(TWO, 2);
-      __m128i OFFSET = _mm_slli_epi16(TWO, 8);
+      __m128i OFFSET = _mm_slli_epi16(TWO, active_bits - 2);
       Z0  = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(_mm_srai_epi16(_mm_add_epi16(_mm_unpacklo_epi16(ZE0, ZO1), ONE), 1), OFFSET), CLIP), ZERO);
       Z8  = _mm_max_epi16(_mm_min_epi16(_mm_add_epi16(_mm_srai_epi16(_mm_add_epi16(_mm_unpackhi_epi16(ZE0, ZO1), ONE), 1), OFFSET), CLIP), ZERO);
       _mm_storeu_si128((__m128i *)&odata[((y - ooffset_y)*ostride + x + 0 - ooffset_x)*2], Z0);

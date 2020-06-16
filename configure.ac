@@ -1,8 +1,8 @@
 AC_PREREQ([2.68])
 AC_INIT([VC2HQDECODE],[0.1.0.2])
 
-AC_CANONICAL_TARGET
-case $target in
+AC_CANONICAL_HOST
+case $host in
 x86_64-*)
         TARGET="x86_64"
         ;;
@@ -59,13 +59,13 @@ AC_ARG_ENABLE(debug, [  --enable-debug=[no/yes] turn on debugging
 if test "x$enable_debug" = "xyes"; then
 #		 VC2HQDECODE_CFLAGS="$VC2HQDECODE_CFLAGS -g -O0"
 		 VC2HQDECODE_CFLAGS="$VC2HQDECODE_CFLAGS -g -Og -DDEBUG"
-		 CXXFLAGS="$CXXFLAGS -O0"
+		 VC2HQDECODE_CXXFLAGS="-std=c++11 -O0 -g -Og -DDEBUG"
      VC2HQDECODE_LDFLAGS="$VC2HQDECODE_LDFLAGS -pg"
 AC_MSG_RESULT(yes)
 else
 AC_MSG_RESULT(no)
 		 VC2HQDECODE_CFLAGS="-g -O3 -funroll-loops"
-		 CXXFLAGS="-g -O3 -funroll-loops -Wall"
+		 VC2HQDECODE_CXXFLAGS="-std=c++11 -g -O3 -funroll-loops -Wall"
      VC2HQDECODE_LDFLAGS=""
 fi
 
@@ -102,8 +102,8 @@ case $host_os in
     IS_LINUX=yes
 
     #Add hidden visibility by default
-    CXXFLAGS="$CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
-    LDFLAGS="$LDFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
+    VC2HQDECODE_CXXFLAGS="$VC2HQDECODE_CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
+    VC2HQDECODE_LDFLAGS="$VC2HQDECODE_LDFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
 
     #Check for librt
     #dnl librt is required
@@ -136,11 +136,13 @@ AX_CREATE_STDINT_H([vc2hqdecode/vc2hqdecode-stdint.h])
 AC_APPEND_SUPPORTED_CFLAGS(VC2HQDECODE_CFLAGS, [-Wall])
 if test "x$VC2HQDECODE_CVS" = "xyes"
 then
-  AC_APPEND_SUPPORTED_CFLAGS(VC2HQDECODE_CFLAGS, [-Werror -Wextra])
+  AC_APPEND_SUPPORTED_CFLAGS(VC2HQDECODE_CFLAGS, [-Wextra])
 fi
 
-VC2HQDECODE_CFLAGS="$VC2HQDECODE_CFLAGS -I\$(top_srcdir)"
+VC2HQDECODE_CPPFLAGS="$VC2HQDECODE_CPPFLAGS -I\$(top_srcdir)"
+AC_SUBST(VC2HQDECODE_CPPFLAGS)
 AC_SUBST(VC2HQDECODE_CFLAGS)
+AC_SUBST(VC2HQDECODE_CXXFLAGS)
 
 VC2HQDECODE_LDFLAGS="$VC2HQDECODE_LDFLAGS"
 AC_APPEND_SUPPORTED_LDFLAGS(VC2HQDECODE_LDFLAGS, [-Wl,--no-undefined])
@@ -171,8 +173,8 @@ AC_SUBST(SSE4_2_FLAGS)
 AC_SUBST(AVX_FLAGS)
 AC_SUBST(AVX2_FLAGS)
 
-REDIST_CFLAGS=" -I\$(top_srcdir)/redist/ "
-AC_SUBST(REDIST_CFLAGS)
+REDIST_CPPFLAGS=" -I\$(top_srcdir)/redist/ "
+AC_SUBST(REDIST_CPPFLAGS)
 
 AC_CONFIG_FILES([
 Makefile

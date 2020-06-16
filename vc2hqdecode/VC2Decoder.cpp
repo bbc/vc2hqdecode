@@ -60,8 +60,10 @@ static int DEBUG_P_SLICE_W;
 static int DEBUG_P_SLICE_H;
 #endif
 
+#define MIN(A,B) (((A)<(B))?(A):(B))
+
 uint32_t max_to_active_bits(const uint32_t m) {
-	return (32 - __builtin_clz(m));
+  return (32 - __builtin_clz(m));
 }
 
 
@@ -81,39 +83,39 @@ static bool HAS_AVX2 = false;
 void detect_cpu_features() {
   __detect_cpu_features(HAS_SSE4_2, HAS_AVX, HAS_AVX2);
 
-	writelog(LOG_INFO, "Processor Features:");
-	if (HAS_SSE4_2)
-		writelog(LOG_INFO, "  SSE4.2 [X]");
-	else
-		writelog(LOG_INFO, "  SSE4.2 [ ]");
+  writelog(LOG_INFO, "Processor Features:");
+  if (HAS_SSE4_2)
+    writelog(LOG_INFO, "  SSE4.2 [X]");
+  else
+    writelog(LOG_INFO, "  SSE4.2 [ ]");
 
-	if (HAS_AVX)
-		writelog(LOG_INFO, "  AVX    [X]");
-	else
-		writelog(LOG_INFO, "  AVX    [ ]");
+  if (HAS_AVX)
+    writelog(LOG_INFO, "  AVX    [X]");
+  else
+    writelog(LOG_INFO, "  AVX    [ ]");
 
-	if (HAS_AVX2)
-		writelog(LOG_INFO, "  AVX2   [X]");
-	else
-		writelog(LOG_INFO, "  AVX2   [ ]");
+  if (HAS_AVX2)
+    writelog(LOG_INFO, "  AVX2   [X]");
+  else
+    writelog(LOG_INFO, "  AVX2   [ ]");
 
-	get_invvtransform = get_invvtransform_c;
-	get_invhtransform = get_invhtransform_c;
-	get_invhtransformfinal = get_invhtransformfinal_c;
+  get_invvtransform = get_invvtransform_c;
+  get_invhtransform = get_invhtransform_c;
+  get_invhtransformfinal = get_invhtransformfinal_c;
 
-	getDequantiseFunction = getDequantiseFunction_c;
+  getDequantiseFunction = getDequantiseFunction_c;
 
-	get_slice_decoder = get_slice_decoder_c;
+  get_slice_decoder = get_slice_decoder_c;
 
 #ifndef NO_SSE4_2
-	if (HAS_SSE4_2) {
-		get_invvtransform = get_invvtransform_sse4_2;
-		get_invhtransform = get_invhtransform_sse4_2;
-		get_invhtransformfinal = get_invhtransformfinal_sse4_2;
+  if (HAS_SSE4_2) {
+    get_invvtransform = get_invvtransform_sse4_2;
+    get_invhtransform = get_invhtransform_sse4_2;
+    get_invhtransformfinal = get_invhtransformfinal_sse4_2;
 
-		getDequantiseFunction = getDequantiseFunction_sse4_2;
-		get_slice_decoder = get_slice_decoder_sse4_2;
-	}
+    getDequantiseFunction = getDequantiseFunction_sse4_2;
+    get_slice_decoder = get_slice_decoder_sse4_2;
+  }
 #endif
 }
 
@@ -142,478 +144,553 @@ void __debug_print_slice(JobData *job, int sample_size) {
 #endif /* DEBUG_P_BLOCK */
 
 VC2DecoderSequenceResult VC2Decoder::sequenceSynchronise(char **_idata, int ilength, bool skip_aux) {
-	VC2DecoderParseSegment pi;
+  VC2DecoderParseSegment pi;
 
-	char *idata = *_idata;
-	int offset = 0;
+  char *idata = *_idata;
+  const char *iend = *_idata + ilength;
+  int offset = 0;
 
-	while (offset < ilength) {
-		try {
-			pi = parse_info(&idata[offset]);
-		}
-		catch (VC2DecoderResult &r) {
-			if (r == VC2DECODER_NOTPARSEINFO) {
-				offset++;
-				continue;
-			}
-			else
-				throw;
-		}
-		switch (pi.parse_code) {
-		case VC2DECODER_PARSE_CODE_SEQUENCE_HEADER:
-			break;
+  while (offset < ilength) {
+    try {
+      pi = parse_info(&idata[offset], iend);
+    }
+    catch (VC2DecoderResult &r) {
+      if (r == VC2DECODER_NOTPARSEINFO) {
+        offset++;
+        continue;
+      }
+      else {
+        writelog(LOG_ERROR, "%s:%d: Error whilst parsing info headers in stream", __FILE__, __LINE__);
+        throw r;
+      }
+    }
+    switch (pi.parse_code) {
+    case VC2DECODER_PARSE_CODE_SEQUENCE_HEADER:
+      break;
 
-		case VC2DECODER_PARSE_CODE_AUXILIARY_DATA:
-			if (!skip_aux) {
-				*_idata = &idata[offset];
-				return VC2DECODER_AUXILIARY;
-			}
-		default:
-			if (pi.next_header == NULL) {
-				offset += 13;
-			}
-			else {
-				offset = pi.next_header - idata;
-			}
-			continue;
-		}
-		break;
-	}
+    case VC2DECODER_PARSE_CODE_AUXILIARY_DATA:
+      if (!skip_aux) {
+        *_idata = &idata[offset];
+        return VC2DECODER_AUXILIARY;
+      }
+    default:
+      if (pi.next_header == NULL) {
+        offset += 13;
+      }
+      else {
+        offset = pi.next_header - idata;
+      }
+      continue;
+    }
+    break;
+  }
 
-	if (offset >= ilength) {
-		return VC2DECODER_EOS;
-	}
+  if (offset >= ilength || pi.data + pi.data_length > iend) {
+    return VC2DECODER_EOS;
+  }
 
-	parseSeqHeader(pi.data);
+  parseSeqHeader(pi.data, pi.data + pi.data_length);
 
-	*_idata = pi.next_header;
+  *_idata = pi.next_header;
 
-	return VC2DECODER_RECONFIGURED;
+  return VC2DECODER_RECONFIGURED;
 }
 
 char *VC2Decoder::FindNextParseInfo(char *_idata, int ilength) {
-	VC2DecoderParseSegment pi;
+  VC2DecoderParseSegment pi;
 
-	char *idata = _idata;
-	int offset = 0;
+  char *idata = _idata;
+  char *iend  = _idata + ilength;
+  int offset = 0;
 
-	while (offset < ilength) {
-		try {
-			pi = parse_info(&idata[offset]);
-		}
-		catch (VC2DecoderResult &r) {
-			if (r == VC2DECODER_NOTPARSEINFO) {
-				offset++;
-				continue;
-			}
-			else
-				throw;
-		}
-		break;
-	}
+  while (offset < ilength) {
+    try {
+      pi = parse_info(&idata[offset], iend);
+    }
+    catch (VC2DecoderResult &r) {
+      if (r == VC2DECODER_NOTPARSEINFO) {
+        offset++;
+        continue;
+      }
+      else {
+        writelog(LOG_ERROR, "%s:%d: Error seeking parse info headers", __FILE__, __LINE__);
+        throw;
+      }
+    }
+    break;
+  }
 
-	if (offset >= ilength) {
-		return NULL;
-	}
+  if (offset >= ilength) {
+    return NULL;
+  }
 
-	return idata + offset;
+  return idata + offset;
 }
 
 VC2DecoderSequenceResult VC2Decoder::sequenceDecodeOnePicture(char **_idata, int ilength, uint16_t **odata, int *ostride, bool skip_aux) {
-	VC2DecoderParseSegment pi;
-	char *idata = *_idata;
-	char *iend = *_idata + ilength;
+  VC2DecoderParseSegment pi;
+  char *idata = *_idata;
+  char *iend = *_idata + ilength;
 
-	try {
-		while (idata < *(_idata)+ilength) {
-			pi = parse_info(idata);
-			if ((uint64_t)idata >(uint64_t)iend) {
-				writelog(LOG_ERROR, "%s:%d:  Data Unit is off end of input data\n", __FILE__, __LINE__);
-				throw VC2DECODER_CODEROVERRUN;
-			}
-			switch (pi.parse_code) {
-			case VC2DECODER_PARSE_CODE_SEQUENCE_HEADER:
-				if (parseSeqHeader(pi.data)) {
-					*_idata = pi.next_header;
-					return VC2DECODER_RECONFIGURED;
-				}
-				break;
+  try {
+    while (idata < *(_idata)+ilength) {
+      pi = parse_info(idata, iend);
+      if ((uint64_t)idata >(uint64_t)iend) {
+        writelog(LOG_ERROR, "%s:%d:  Data Unit is off end of input data\n", __FILE__, __LINE__);
+        throw VC2DECODER_CODEROVERRUN;
+      }
+      switch (pi.parse_code) {
+      case VC2DECODER_PARSE_CODE_SEQUENCE_HEADER:
+        if (parseSeqHeader(pi.data, pi.data + pi.data_length)) {
+          *_idata = pi.next_header;
+          return VC2DECODER_RECONFIGURED;
+        }
+        break;
 
-			case VC2DECODER_PARSE_CODE_END_OF_SEQUENCE:
-				*_idata = idata + 13;
-				return VC2DECODER_EOS;
+      case VC2DECODER_PARSE_CODE_END_OF_SEQUENCE:
+        *_idata = idata + 13;
+        return VC2DECODER_EOS;
 
-			case VC2DECODER_PARSE_CODE_AUXILIARY_DATA:
-				if (!skip_aux) {
-					*_idata = idata;
-					return VC2DECODER_AUXILIARY;
-				}
-			case VC2DECODER_PARSE_CODE_PADDING_DATA:
-				break;
+      case VC2DECODER_PARSE_CODE_AUXILIARY_DATA:
+        if (!skip_aux) {
+          *_idata = idata;
+          return VC2DECODER_AUXILIARY;
+        }
+      case VC2DECODER_PARSE_CODE_PADDING_DATA:
+        break;
 
-			case VC2DECODER_PARSE_CODE_CORE_PICTURE_AC:
-			case VC2DECODER_PARSE_CODE_CORE_PICTURE_VLC:
-			case VC2DECODER_PARSE_CODE_LD_PICTURE:
-				*_idata = pi.next_header;
-				return VC2DECODER_INVALID_PICTURE;
+      case VC2DECODER_PARSE_CODE_CORE_PICTURE_AC:
+      case VC2DECODER_PARSE_CODE_CORE_PICTURE_VLC:
+      case VC2DECODER_PARSE_CODE_LD_PICTURE:
+        *_idata = pi.next_header;
+        return VC2DECODER_INVALID_PICTURE;
 
-			case VC2DECODER_PARSE_CODE_HQ_PICTURE:
-			{
-				uint64_t length = decodeFrame(pi.data, iend - pi.data, odata, ostride);
-				if (pi.next_header != NULL) {
-					*_idata = pi.next_header;
-				}
-				else {
-					*_idata = FindNextParseInfo(idata + length, iend - (idata + length));
-				}
-			}
-			return VC2DECODER_PICTURE;
+      case VC2DECODER_PARSE_CODE_HQ_PICTURE:
+        {
+          uint64_t length = decodeFrame(pi.data, iend - pi.data, odata, ostride);
+          if (pi.next_header != NULL) {
+            *_idata = pi.next_header;
+          }
+          else {
+            *_idata = FindNextParseInfo(idata + length, iend - (idata + length));
+          }
+        }
+        return VC2DECODER_PICTURE;
 
-			default:
-				writelog(LOG_WARN, "%s:%d:  Unknown parse code 0x%02x\n", __FILE__, __LINE__, pi.parse_code);
-				break;
-			}
+      case VC2DECODER_PARSE_CODE_HQ_FRAGMENT:
+        {
+          bool full_pic = handleFragment(pi.data, iend - pi.data, odata, ostride);
+          if (pi.next_header != NULL) {
+            *_idata = pi.next_header;
+          }
+          else {
+            *_idata = FindNextParseInfo(idata + 12, iend - idata + 12);
+          }
+          if (full_pic)
+            return VC2DECODER_PICTURE;
+        }
+        break;
 
-			if (pi.next_header == NULL) {
-				*_idata = idata + 13;
-				return VC2DECODER_EOS;
-			}
+      default:
+        writelog(LOG_WARN, "%s:%d:  Unknown parse code 0x%02x\n", __FILE__, __LINE__, pi.parse_code);
+        break;
+      }
 
-			idata = pi.next_header;
-		}
-	}
-	catch (VC2DecoderResult &r) {
-		if (r == VC2DECODER_NOTPARSEINFO) {
-			writelog(LOG_ERROR, "%s:%d:  No Parse Info Header Where One was Expected\n", __FILE__, __LINE__);
-			throw VC2DECODER_BADSTREAM;
-		}
-		throw;
-	}
+      if (pi.next_header == NULL) {
+        *_idata = idata + 13;
+        return VC2DECODER_EOS;
+      }
 
-	writelog(LOG_WARN, "%s:%d: Premature end of stream\n", __FILE__, __LINE__);
-	*_idata += ilength;
-	return VC2DECODER_EOS;
+      idata = pi.next_header;
+    }
+  }
+  catch (VC2DecoderResult &r) {
+    if (r == VC2DECODER_NOTPARSEINFO) {
+      writelog(LOG_ERROR, "%s:%d:  No Parse Info Header Where One was Expected\n", __FILE__, __LINE__);
+      throw VC2DECODER_BADSTREAM;
+    } else if (r == VC2DECODER_CODEROVERRUN) {
+      writelog(LOG_ERROR, "%s:%d:  Parse Info header runs off end of stream", __FILE__, __LINE__);
+      throw VC2DECODER_CODEROVERRUN;
+    }
+    throw;
+  }
+
+  writelog(LOG_WARN, "%s:%d: Premature end of stream\n", __FILE__, __LINE__);
+  *_idata += ilength;
+  return VC2DECODER_EOS;
 }
 
 int VC2Decoder::sequenceExtractAux(char **_idata, int ilength, uint8_t **odata) {
-	VC2DecoderParseSegment pi;
-	char *idata = *_idata;
+  VC2DecoderParseSegment pi;
+  char *idata = *_idata;
+  const char *iend = *_idata + ilength;
 
-	if (ilength < 13)
-		throw VC2DECODER_CODEROVERRUN;
+  if (ilength < 13)
+    throw VC2DECODER_CODEROVERRUN;
 
-	pi = parse_info(idata);
+  try {
+    pi = parse_info(idata, iend);
+  } catch (VC2DecoderResult &r) {
+    writelog(LOG_ERROR, "%s:%d: Error searching for valid parse_info headers", __FILE__, __LINE__);
+    throw VC2DECODER_BADSTREAM;
+  }
 
-	if (pi.parse_code != VC2DECODER_PARSE_CODE_AUXILIARY_DATA) {
-		throw VC2DECODER_NOTPARSEINFO;
-	}
+  if (pi.parse_code != VC2DECODER_PARSE_CODE_AUXILIARY_DATA) {
+    throw VC2DECODER_NOTPARSEINFO;
+  }
 
-	if (pi.next_header >= (*_idata) + ilength)
-		throw VC2DECODER_CODEROVERRUN;
+  if (pi.next_header >= (*_idata) + ilength)
+    throw VC2DECODER_CODEROVERRUN;
 
-	*odata = (uint8_t *)pi.data;
-	*_idata = pi.next_header;
+  *odata = (uint8_t *)pi.data;
+  *_idata = pi.next_header;
 
-	return pi.next_header - pi.data;
+  return pi.next_header - pi.data;
 }
 
-bool VC2Decoder::parseSeqHeader(char *_idata) {
-#define EXPECT_VAL(N) { uint32_t d = read_uint(idata, bits);\
+bool VC2Decoder::parseSeqHeader(char *_idata, const char *_iend) {
+#define EXPECT_VAL(N) { uint32_t d = read_uint(idata, bits, iend); \
     if (d != (N)) {\
       writelog(LOG_WARN, "%s:%d:  Expected %d, got %d when parsing sequence header\n", __FILE__, __LINE__, (N), d); \
     }\
   }
 
-	uint8_t *idata = (uint8_t *)_idata;
-	if ((!mSeqHeaderEncoded) || mSeqHeaderEncodedLength == 0 || (memcmp(mSeqHeaderEncoded, idata, mSeqHeaderEncodedLength) != 0)) {
-		writelog(LOG_INFO, "Processing Sequence Header");
-		int bits = 7;
-		EXPECT_VAL(2);
-		EXPECT_VAL(0);
-		EXPECT_VAL(3);
-		int level = read_uint(idata, bits);
-		if (level != 3 && level != 6) {
-			writelog(LOG_WARN, "%s:%d: Expected 3 or 6, got %d when reading level\n", __FILE__, __LINE__, level);
-		}
+  uint8_t *idata = (uint8_t *)_idata;
+  const uint8_t *iend  = (const uint8_t *)_iend;
+  if ((!mSeqHeaderEncoded) || mSeqHeaderEncodedLength == 0 || (memcmp(mSeqHeaderEncoded, idata, mSeqHeaderEncodedLength) != 0)) {
+    writelog(LOG_INFO, "Processing Sequence Header");
+    int bits = 7;
+    uint32_t major_version = read_uint(idata, bits, iend);
+    if (major_version < 2 || major_version > 3) {
+      writelog(LOG_WARN, "%s:%d: Expected 2 or 3, got %d when parsing major_version from sequence header\n", __FILE__, __LINE__, major_version);
+    }
+    EXPECT_VAL(0);
+    EXPECT_VAL(3);
+    int level = read_uint(idata, bits, iend);
+    if (level != 3 && level != 6) {
+      writelog(LOG_WARN, "%s:%d: Expected 3 or 6, got %d when reading level\n", __FILE__, __LINE__, level);
+    }
 
-		VC2DecoderParamsInternal params;
-		params = mParams;
+    mMajorVersion = major_version;
 
-		params.video_format.base_video_format = read_uint(idata, bits);
+    VC2DecoderParamsInternal params;
+    params = mParams;
 
-		params.video_format.custom_dimensions_flag = read_bool(idata, bits);
-		if (params.video_format.custom_dimensions_flag) {
-			params.video_format.frame_width = read_uint(idata, bits);
-			params.video_format.frame_height = read_uint(idata, bits);
-		}
+    params.video_format.base_video_format = read_uint(idata, bits, iend);
 
-		params.video_format.custom_color_diff_format_flag = read_bool(idata, bits);
-		if (params.video_format.custom_color_diff_format_flag) {
-			params.video_format.color_diff_format_index = read_uint(idata, bits);
-		}
+    params.video_format.custom_dimensions_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_dimensions_flag) {
+      params.video_format.frame_width = read_uint(idata, bits, iend);
+      params.video_format.frame_height = read_uint(idata, bits, iend);
+    }
 
-		params.video_format.custom_scan_format_flag = read_bool(idata, bits);
-		if (params.video_format.custom_scan_format_flag) {
-			params.video_format.source_sampling = read_uint(idata, bits);
-		}
+    params.video_format.custom_color_diff_format_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_color_diff_format_flag) {
+      params.video_format.color_diff_format_index = read_uint(idata, bits, iend);
+    }
 
-		params.video_format.custom_frame_rate_flag = read_bool(idata, bits);
-		if (params.video_format.custom_frame_rate_flag) {
-			params.video_format.frame_rate_index = read_uint(idata, bits);
-			if (params.video_format.frame_rate_index == 0) {
-				params.video_format.frame_rate_numer = read_uint(idata, bits);
-				params.video_format.frame_rate_denom = read_uint(idata, bits);
-			}
-		}
+    params.video_format.custom_scan_format_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_scan_format_flag) {
+      params.video_format.source_sampling = read_uint(idata, bits, iend);
+    }
 
-		params.video_format.custom_pixel_aspect_ratio_flag = read_bool(idata, bits);
-		if (params.video_format.custom_pixel_aspect_ratio_flag) {
-			params.video_format.pixel_aspect_ratio_index = read_uint(idata, bits);
-			if (params.video_format.pixel_aspect_ratio_index == 0) {
-				params.video_format.pixel_aspect_ratio_numer = read_uint(idata, bits);
-				params.video_format.pixel_aspect_ratio_denom = read_uint(idata, bits);
-			}
-		}
+    params.video_format.custom_frame_rate_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_frame_rate_flag) {
+      params.video_format.frame_rate_index = read_uint(idata, bits, iend);
+      if (params.video_format.frame_rate_index == 0) {
+        params.video_format.frame_rate_numer = read_uint(idata, bits, iend);
+        params.video_format.frame_rate_denom = read_uint(idata, bits, iend);
+      }
+    }
 
-		params.video_format.custom_clean_area_flag = read_bool(idata, bits);
-		if (params.video_format.custom_clean_area_flag) {
-			params.video_format.clean_width = read_uint(idata, bits);
-			params.video_format.clean_height = read_uint(idata, bits);
-			params.video_format.left_offset = read_uint(idata, bits);
-			params.video_format.top_offset = read_uint(idata, bits);
-		}
+    params.video_format.custom_pixel_aspect_ratio_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_pixel_aspect_ratio_flag) {
+      params.video_format.pixel_aspect_ratio_index = read_uint(idata, bits, iend);
+      if (params.video_format.pixel_aspect_ratio_index == 0) {
+        params.video_format.pixel_aspect_ratio_numer = read_uint(idata, bits, iend);
+        params.video_format.pixel_aspect_ratio_denom = read_uint(idata, bits, iend);
+      }
+    }
 
-		params.video_format.custom_signal_range_flag = read_bool(idata, bits);
-		if (params.video_format.custom_signal_range_flag) {
-			params.video_format.signal_range_index = read_uint(idata, bits);
-			if (params.video_format.signal_range_index == 0) {
-				params.video_format.luma_offset = read_uint(idata, bits);
-				params.video_format.luma_excursion = read_uint(idata, bits);
-				params.video_format.color_diff_offset = read_uint(idata, bits);
-				params.video_format.color_diff_excursion = read_uint(idata, bits);
-			}
-		}
+    params.video_format.custom_clean_area_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_clean_area_flag) {
+      params.video_format.clean_width = read_uint(idata, bits, iend);
+      params.video_format.clean_height = read_uint(idata, bits, iend);
+      params.video_format.left_offset = read_uint(idata, bits, iend);
+      params.video_format.top_offset = read_uint(idata, bits, iend);
+    }
 
-		params.video_format.custom_color_spec_flag = read_bool(idata, bits);
-		if (params.video_format.custom_color_spec_flag) {
-			params.video_format.color_spec_index = read_uint(idata, bits);
-			if (params.video_format.color_spec_index == 0) {
-				params.video_format.custom_color_primaries_flag = read_bool(idata, bits);
-				if (params.video_format.custom_color_primaries_flag) {
-					params.video_format.color_primaries_index = read_uint(idata, bits);
-				}
+    params.video_format.custom_signal_range_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_signal_range_flag) {
+      params.video_format.signal_range_index = read_uint(idata, bits, iend);
+      if (params.video_format.signal_range_index == 0) {
+        params.video_format.luma_offset = read_uint(idata, bits, iend);
+        params.video_format.luma_excursion = read_uint(idata, bits, iend);
+        params.video_format.color_diff_offset = read_uint(idata, bits, iend);
+        params.video_format.color_diff_excursion = read_uint(idata, bits, iend);
+      }
+    }
 
-				params.video_format.custom_color_matrix_flag = read_bool(idata, bits);
-				if (params.video_format.custom_color_matrix_flag) {
-					params.video_format.color_matrix_index = read_uint(idata, bits);
-				}
+    params.video_format.custom_color_spec_flag = read_bool(idata, bits, iend);
+    if (params.video_format.custom_color_spec_flag) {
+      params.video_format.color_spec_index = read_uint(idata, bits, iend);
+      if (params.video_format.color_spec_index == 0) {
+        params.video_format.custom_color_primaries_flag = read_bool(idata, bits, iend);
+        if (params.video_format.custom_color_primaries_flag) {
+          params.video_format.color_primaries_index = read_uint(idata, bits, iend);
+        }
 
-				params.video_format.custom_transfer_function_flag = read_bool(idata, bits);
-				if (params.video_format.custom_transfer_function_flag) {
-					params.video_format.transfer_function_index = read_uint(idata, bits);
-				}
-			}
-		}
+        params.video_format.custom_color_matrix_flag = read_bool(idata, bits, iend);
+        if (params.video_format.custom_color_matrix_flag) {
+          params.video_format.color_matrix_index = read_uint(idata, bits, iend);
+        }
 
-		uint32_t picture_coding_mode = read_uint(idata, bits);
-		mInterlaced = (picture_coding_mode != 0);
+        params.video_format.custom_transfer_function_flag = read_bool(idata, bits, iend);
+        if (params.video_format.custom_transfer_function_flag) {
+          params.video_format.transfer_function_index = read_uint(idata, bits, iend);
+        }
+      }
+    }
 
-		mParams = params;
-		mConfigured = false;
-		setVideoFormat(mParams);
+    uint32_t picture_coding_mode = read_uint(idata, bits, iend);
+    mInterlaced = (picture_coding_mode != 0);
 
-		byte_align(idata, bits);
-		if (mSeqHeaderEncoded)
-			delete[] mSeqHeaderEncoded;
-		mSeqHeaderEncodedLength = idata - (uint8_t *)_idata;
-		mSeqHeaderEncoded = new uint8_t[mSeqHeaderEncodedLength];
-		memcpy(mSeqHeaderEncoded, _idata, mSeqHeaderEncodedLength);
+    mParams = params;
+    mConfigured = false;
+    setVideoFormat(mParams);
 
-		mSequenceInfo.video_format = params.video_format;
-		mSequenceInfo.picture_coding_mode = picture_coding_mode;
-		mSequenceInfo.sequence_headers_seen++;
-		return true;
-	}
-	return false;
+    byte_align(idata, bits);
+    if (mSeqHeaderEncoded)
+      delete[] mSeqHeaderEncoded;
+    mSeqHeaderEncodedLength = idata - (uint8_t *)_idata;
+    mSeqHeaderEncoded = new uint8_t[mSeqHeaderEncodedLength];
+    memcpy(mSeqHeaderEncoded, _idata, mSeqHeaderEncodedLength);
+
+    mSequenceInfo.video_format = params.video_format;
+    mSequenceInfo.picture_coding_mode = picture_coding_mode;
+    mSequenceInfo.sequence_headers_seen++;
+    return true;
+  }
+  return false;
 }
 
 void VC2Decoder::setUserParams(VC2DecoderParamsUser &params) {
-	mParams.threads = params.threads;
-	mParams.numa_first_node = params.numa_first_node;
+  mParams.threads = params.threads;
+  mParams.numa_first_node = params.numa_first_node;
 
-	mParams.colourise = params.colourise_quantiser || params.colourise_padding || params.colourise_unpadded;
-	mParams.colourise_quantiser = params.colourise_quantiser;
-	mParams.colourise_padding = params.colourise_padding;
-	mParams.colourise_unpadded = params.colourise_unpadded;
+  mParams.colourise = params.colourise_quantiser || params.colourise_padding || params.colourise_unpadded;
+  mParams.colourise_quantiser = params.colourise_quantiser;
+  mParams.colourise_padding = params.colourise_padding;
+  mParams.colourise_unpadded = params.colourise_unpadded;
 
-	mParams.partial_decode = false;
+  mParams.partial_decode = false;
 
-	if (params.partial_decode) {
-		mParams.partial_decode = true;
-		mParams.partial_decode_offset_x = params.partial_decode_offset_x;
-		mParams.partial_decode_offset_y = params.partial_decode_offset_y;
-		mParams.partial_decode_width = params.partial_decode_width;
-		mParams.partial_decode_height = params.partial_decode_height;
-	}
+  if (params.partial_decode) {
+    mParams.partial_decode = true;
+    mParams.partial_decode_offset_x = params.partial_decode_offset_x;
+    mParams.partial_decode_offset_y = params.partial_decode_offset_y;
+    mParams.partial_decode_width = params.partial_decode_width;
+    mParams.partial_decode_height = params.partial_decode_height;
+  }
 
-	if (mConfigured)
-		setParams(mParams);
+  if (mConfigured)
+    setParams(mParams);
 }
 
 void VC2Decoder::setVideoFormat(VC2DecoderParamsInternal &params) {
-	mVideoFormat = vc2::preset_formats[params.video_format.base_video_format];
+  mVideoFormat = vc2::preset_formats[params.video_format.base_video_format];
 
-	if (params.video_format.custom_dimensions_flag) {
-		mVideoFormat.frame_width = params.video_format.frame_width;
-		mVideoFormat.frame_height = params.video_format.frame_height;
-	}
+  if (params.video_format.custom_dimensions_flag) {
+    mVideoFormat.frame_width = params.video_format.frame_width;
+    mVideoFormat.frame_height = params.video_format.frame_height;
+  }
 
-	if (params.video_format.custom_color_diff_format_flag) {
-		mVideoFormat.color_diff_format_index = params.video_format.color_diff_format_index;
-	}
+  if (params.video_format.custom_color_diff_format_flag) {
+    mVideoFormat.color_diff_format_index = params.video_format.color_diff_format_index;
+  }
 
-	if (params.video_format.custom_scan_format_flag) {
-		mVideoFormat.source_sampling = params.video_format.source_sampling;
-	}
+  if (params.video_format.custom_scan_format_flag) {
+    mVideoFormat.source_sampling = params.video_format.source_sampling;
+  }
 
-	if (params.video_format.custom_frame_rate_flag) {
-		if (params.video_format.frame_rate_index == 0) {
-			mVideoFormat.frame_rate_numer = params.video_format.frame_rate_numer;
-			mVideoFormat.frame_rate_denom = params.video_format.frame_rate_denom;
-		}
-		else {
-			mVideoFormat.frame_rate_numer = vc2::preset_framerates[params.video_format.frame_rate_index].numer;
-			mVideoFormat.frame_rate_denom = vc2::preset_framerates[params.video_format.frame_rate_index].denom;
-		}
-	}
+  if (params.video_format.custom_frame_rate_flag) {
+    if (params.video_format.frame_rate_index == 0) {
+      mVideoFormat.frame_rate_numer = params.video_format.frame_rate_numer;
+      mVideoFormat.frame_rate_denom = params.video_format.frame_rate_denom;
+    }
+    else {
+      mVideoFormat.frame_rate_numer = vc2::preset_framerates[params.video_format.frame_rate_index].numer;
+      mVideoFormat.frame_rate_denom = vc2::preset_framerates[params.video_format.frame_rate_index].denom;
+    }
+  }
 
-	if (params.video_format.custom_pixel_aspect_ratio_flag) {
-		if (params.video_format.pixel_aspect_ratio_index == 0) {
-			mVideoFormat.pixel_aspect_ratio_numer = params.video_format.pixel_aspect_ratio_numer;
-			mVideoFormat.pixel_aspect_ratio_denom = params.video_format.pixel_aspect_ratio_denom;
-		}
-		else {
-			mVideoFormat.pixel_aspect_ratio_numer = vc2::preset_pixel_aspect_ratios[params.video_format.pixel_aspect_ratio_index][0];
-			mVideoFormat.pixel_aspect_ratio_denom = vc2::preset_pixel_aspect_ratios[params.video_format.pixel_aspect_ratio_index][1];
-		}
-	}
+  if (params.video_format.custom_pixel_aspect_ratio_flag) {
+    if (params.video_format.pixel_aspect_ratio_index == 0) {
+      mVideoFormat.pixel_aspect_ratio_numer = params.video_format.pixel_aspect_ratio_numer;
+      mVideoFormat.pixel_aspect_ratio_denom = params.video_format.pixel_aspect_ratio_denom;
+    }
+    else {
+      mVideoFormat.pixel_aspect_ratio_numer = vc2::preset_pixel_aspect_ratios[params.video_format.pixel_aspect_ratio_index][0];
+      mVideoFormat.pixel_aspect_ratio_denom = vc2::preset_pixel_aspect_ratios[params.video_format.pixel_aspect_ratio_index][1];
+    }
+  }
 
-	if (params.video_format.custom_clean_area_flag) {
-		mVideoFormat.clean_width = params.video_format.clean_width;
-		mVideoFormat.clean_height = params.video_format.clean_height;
-		mVideoFormat.left_offset = params.video_format.left_offset;
-		mVideoFormat.top_offset = params.video_format.top_offset;
-	}
+  if (params.video_format.custom_clean_area_flag) {
+    mVideoFormat.clean_width = params.video_format.clean_width;
+    mVideoFormat.clean_height = params.video_format.clean_height;
+    mVideoFormat.left_offset = params.video_format.left_offset;
+    mVideoFormat.top_offset = params.video_format.top_offset;
+  }
 
-	if (params.video_format.custom_signal_range_flag) {
-		if (params.video_format.signal_range_index != 0) {
-			mVideoFormat.luma_offset = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_offset;
-			mVideoFormat.luma_excursion = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_excursion;
-			mVideoFormat.luma_bytes_per_sample = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_bytes_per_sample;
-			mVideoFormat.luma_active_bits = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_active_bits;
-			mVideoFormat.color_diff_offset = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_offset;
-			mVideoFormat.color_diff_excursion = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_excursion;
-			mVideoFormat.color_diff_bytes_per_sample = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_bytes_per_sample;
-			mVideoFormat.color_diff_active_bits = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_active_bits;
-		}
-		else {
-			mVideoFormat.luma_offset = params.video_format.luma_offset;
-			mVideoFormat.luma_excursion = params.video_format.luma_excursion;
-			mVideoFormat.luma_active_bits = max_to_active_bits(params.video_format.luma_excursion + params.video_format.luma_offset);
-			mVideoFormat.luma_bytes_per_sample = (mVideoFormat.luma_active_bits > 8) ? 2 : 1;
-			mVideoFormat.color_diff_offset = params.video_format.color_diff_offset;
-			mVideoFormat.color_diff_excursion = params.video_format.color_diff_excursion;
-			mVideoFormat.color_diff_active_bits = max_to_active_bits(params.video_format.color_diff_excursion / 2 + params.video_format.color_diff_offset);
-			mVideoFormat.color_diff_bytes_per_sample = (mVideoFormat.color_diff_active_bits > 8) ? 2 : 1;
-		}
-	}
+  if (params.video_format.custom_signal_range_flag) {
+    if (params.video_format.signal_range_index != 0) {
+      mVideoFormat.luma_offset = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_offset;
+      mVideoFormat.luma_excursion = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_excursion;
+      mVideoFormat.luma_bytes_per_sample = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_bytes_per_sample;
+      mVideoFormat.luma_active_bits = vc2::preset_signal_ranges[params.video_format.signal_range_index].luma_active_bits;
+      mVideoFormat.color_diff_offset = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_offset;
+      mVideoFormat.color_diff_excursion = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_excursion;
+      mVideoFormat.color_diff_bytes_per_sample = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_bytes_per_sample;
+      mVideoFormat.color_diff_active_bits = vc2::preset_signal_ranges[params.video_format.signal_range_index].color_diff_active_bits;
+    }
+    else {
+      mVideoFormat.luma_offset = params.video_format.luma_offset;
+      mVideoFormat.luma_excursion = params.video_format.luma_excursion;
+      mVideoFormat.luma_active_bits = max_to_active_bits(params.video_format.luma_excursion + params.video_format.luma_offset);
+      mVideoFormat.luma_bytes_per_sample = (mVideoFormat.luma_active_bits > 8) ? 2 : 1;
+      mVideoFormat.color_diff_offset = params.video_format.color_diff_offset;
+      mVideoFormat.color_diff_excursion = params.video_format.color_diff_excursion;
+      mVideoFormat.color_diff_active_bits = max_to_active_bits(params.video_format.color_diff_excursion / 2 + params.video_format.color_diff_offset);
+      mVideoFormat.color_diff_bytes_per_sample = (mVideoFormat.color_diff_active_bits > 8) ? 2 : 1;
+    }
+  }
 
-	if (params.video_format.custom_color_spec_flag) {
-		if (params.video_format.color_spec_index == 0) {
-			if (params.video_format.custom_color_primaries_flag) {
-				mVideoFormat.color_primaries = params.video_format.color_primaries_index;
-			}
+  if (params.video_format.custom_color_spec_flag) {
+    if (params.video_format.color_spec_index == 0) {
+      if (params.video_format.custom_color_primaries_flag) {
+        mVideoFormat.color_primaries = params.video_format.color_primaries_index;
+      }
 
-			if (params.video_format.custom_color_matrix_flag) {
-				mVideoFormat.color_matrix = params.video_format.color_matrix_index;
-			}
+      if (params.video_format.custom_color_matrix_flag) {
+        mVideoFormat.color_matrix = params.video_format.color_matrix_index;
+      }
 
-			if (params.video_format.custom_transfer_function_flag) {
-				mVideoFormat.transfer_function = params.video_format.transfer_function_index;
-			}
-		}
-		else {
-			mVideoFormat.color_primaries = vc2::preset_color_specs[params.video_format.color_spec_index].color_primaries;
-			mVideoFormat.color_matrix = vc2::preset_color_specs[params.video_format.color_spec_index].color_matrix;
-			mVideoFormat.transfer_function = vc2::preset_color_specs[params.video_format.color_spec_index].transfer_function;
-		}
-	}
+      if (params.video_format.custom_transfer_function_flag) {
+        mVideoFormat.transfer_function = params.video_format.transfer_function_index;
+      }
+    }
+    else {
+      mVideoFormat.color_primaries = vc2::preset_color_specs[params.video_format.color_spec_index].color_primaries;
+      mVideoFormat.color_matrix = vc2::preset_color_specs[params.video_format.color_spec_index].color_matrix;
+      mVideoFormat.transfer_function = vc2::preset_color_specs[params.video_format.color_spec_index].transfer_function;
+    }
+  }
 
-	if (mVideoFormat.luma_active_bits != 10 || mVideoFormat.color_diff_active_bits != 10 ||
-		//      mVideoFormat.frame_width != 1920 || mVideoFormat.frame_height != 1080 ||
-		mVideoFormat.color_diff_format_index != VC2DECODER_CDS_422) {
-		writelog(LOG_ERROR, "%s:%d:  Frame geometry not supported, only 4:2:2 10-bit is supported currently.", __FILE__, __LINE__);
-		throw VC2DECODER_NOTIMPLEMENTED;
-	}
+  if ((mVideoFormat.luma_active_bits != 10 && mVideoFormat.luma_active_bits != 12) || (mVideoFormat.color_diff_active_bits != 10 && mVideoFormat.color_diff_active_bits != 12) ||
+    //      mVideoFormat.frame_width != 1920 || mVideoFormat.frame_height != 1080 ||
+    mVideoFormat.color_diff_format_index != VC2DECODER_CDS_422) {
+    writelog(LOG_ERROR, "%s:%d:  Frame geometry not supported, only 4:2:2 10-bit or 12-bit is supported currently.", __FILE__, __LINE__);
+    throw VC2DECODER_NOTIMPLEMENTED;
+  }
 
-	mOutputFormat.width = mVideoFormat.frame_width;
-	mOutputFormat.height = mVideoFormat.frame_height;
-	mOutputFormat.signal_range = VC2DECODER_PSR_10BITVID;
-	mOutputFormat.source_sampling = mVideoFormat.color_diff_format_index;
-	mOutputFormat.frame_rate_numer = mVideoFormat.frame_rate_numer;
-	mOutputFormat.frame_rate_denom = mVideoFormat.frame_rate_denom;
-	mOutputFormat.interlaced = mInterlaced;
+  mOutputFormat.width = mVideoFormat.frame_width;
+  mOutputFormat.height = mVideoFormat.frame_height;
+  if (mVideoFormat.luma_active_bits == 10)
+    mOutputFormat.signal_range = VC2DECODER_PSR_10BITVID;
+  else if (mVideoFormat.luma_active_bits == 12)
+    mOutputFormat.signal_range = VC2DECODER_PSR_12BITVID;
+  mOutputFormat.source_sampling = mVideoFormat.color_diff_format_index;
+  mOutputFormat.frame_rate_numer = mVideoFormat.frame_rate_numer;
+  mOutputFormat.frame_rate_denom = mVideoFormat.frame_rate_denom;
+  mOutputFormat.interlaced = mInterlaced;
 
-	if (mParams.partial_decode) {
-		mOutputFormat.width = mParams.partial_decode_width;
-		mOutputFormat.height = mParams.partial_decode_height;
-	}
+  if (mParams.partial_decode) {
+    mOutputFormat.width = mParams.partial_decode_width;
+    mOutputFormat.height = mParams.partial_decode_height;
+  }
 
-	writelog(LOG_INFO, "Configuring for %d x %d", mOutputFormat.width, mOutputFormat.height);
+  writelog(LOG_INFO, "Configuring for %d x %d", mOutputFormat.width, mOutputFormat.height);
 }
 
 void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
-	int sample_size = 2;
+  int sample_size = 2;
 
-	if (params.transform_params.wavelet_index == VC2DECODER_WFT_FIDELITY ||
-		params.transform_params.wavelet_index == VC2DECODER_WFT_DAUBECHIES_9_7) {
-		sample_size = 4;
-	}
+  /* Check validity of parameters */
+#define ASSERTPARAM(COND, MSG, ...) { if (!(COND)) { writelog(LOG_ERROR, "%s:%d: Invalid Parameter in Stream: " #MSG , __FILE__, __LINE__, ##__VA_ARGS__); throw VC2DECODER_DECODE_FAILED;; } }
 
-	mSlicesX = params.transform_params.slices_x;
-	mSlicesY = params.transform_params.slices_y;
+  try{
+  ASSERTPARAM(params.slice_prefix_bytes >= 0, "Slice Prefix is negative");
+  ASSERTPARAM(params.slice_size_scalar >= 0, "Slice Size Scaler is negative");
+  ASSERTPARAM(params.threads >= 0, "Number of threads is negative");
+
+  ASSERTPARAM(params.video_format.base_video_format >= VC2DECODER_BVF_CUSTOM && params.video_format.base_video_format <= VC2DECODER_BVF_SDPRO486, "Unknown base video format: %d", params.video_format.base_video_format);
+  ASSERTPARAM(params.video_format.base_video_format >= VC2DECODER_BVF_CUSTOM && params.video_format.base_video_format <= VC2DECODER_BVF_SDPRO486, "Unknown base video format: %d", params.video_format.base_video_format);
+  ASSERTPARAM(!params.video_format.custom_color_diff_format_flag || (params.video_format.color_diff_format_index == 1) , "Color Diff Format Must be 4:2:2");
+  ASSERTPARAM(!params.video_format.custom_scan_format_flag || (params.video_format.source_sampling >= 0 && params.video_format.source_sampling <= 1) , "Invalid custom scan format specified");
+  ASSERTPARAM(!params.video_format.custom_frame_rate_flag || (params.video_format.frame_rate_index >= VC2DECODER_FR_CUSTOM && params.video_format.frame_rate_index <= VC2DECODER_FR_120) , "Invalid custom frame_rate specified");
+  ASSERTPARAM(!params.video_format.custom_pixel_aspect_ratio_flag || (params.video_format.pixel_aspect_ratio_index >= VC2DECODER_PAR_CUSTOM && params.video_format.pixel_aspect_ratio_index <= VC2DECODER_PAR_4_3),
+              "Invalid custom pixel aspect ratio specified");
+  ASSERTPARAM(!params.video_format.custom_signal_range_flag || (params.video_format.signal_range_index >= VC2DECODER_PSR_CUSTOM && params.video_format.signal_range_index <= VC2DECODER_PSR_12BITVID),
+              "Invalid custom signal range specified");
+  ASSERTPARAM(!params.video_format.custom_color_spec_flag || (params.video_format.color_spec_index >= VC2DECODER_CSP_CUSTOM && params.video_format.color_spec_index <= VC2DECODER_CSP_HDRTV_HLG),
+              "Invalid custom colour spec specified");
+  ASSERTPARAM(!params.video_format.custom_color_primaries_flag || (params.video_format.color_primaries_index >= VC2DECODER_CPR_HDTV && params.video_format.color_primaries_index <= VC2DECODER_CPR_UHDTV),
+              "Invalid costom colour primaries specified");
+  ASSERTPARAM(!params.video_format.custom_color_matrix_flag || (params.video_format.color_matrix_index >= VC2DECODER_CMA_HDTV && params.video_format.color_matrix_index <= VC2DECODER_CMA_UHDTV),
+              "Invalid custom colour matrix specified");
+  ASSERTPARAM(!params.video_format.custom_transfer_function_flag || (params.video_format.transfer_function_index >= VC2DECODER_TRF_TVGAMMA && params.video_format.transfer_function_index <= VC2DECODER_TRF_HLG),
+              "Invalid custom transfer function specified");
+
+  ASSERTPARAM(params.transform_params.wavelet_index >= VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7 && params.transform_params.wavelet_index <= VC2DECODER_WFT_DAUBECHIES_9_7,
+              "Invalid wavelet kernel specified");
+  ASSERTPARAM(params.transform_params.wavelet_depth >= 1, "Wavelet Depth must be at least 1");
+  ASSERTPARAM(params.transform_params.slices_x > 0 && params.transform_params.slices_y > 0, "Must have at least one slice");
+  } catch(VC2DecoderResult &r) {
+    writelog(LOG_ERROR, "Error: %d", (int)r);
+    throw;
+  }
+
+#undef ASSERTPARAM
+
+  if (params.transform_params.wavelet_index == VC2DECODER_WFT_FIDELITY ||
+    params.transform_params.wavelet_index == VC2DECODER_WFT_DAUBECHIES_9_7) {
+    sample_size = 4;
+  }
+
+  mSlicesX = params.transform_params.slices_x;
+  mSlicesY = params.transform_params.slices_y;
 
 
-	if (mJobs) {
-		for (int i = 0; i < mJobsX*mJobsY; i++) {
-			delete mJobs[i];
-		}
-		delete[] mJobs;
-	}
+  if (mJobs) {
+    for (int i = 0; i < mJobsX*mJobsY; i++) {
+      delete mJobs[i];
+    }
+    delete[] mJobs;
+  }
 
-	if (mSliceJobLUTX) {
-		delete[] mSliceJobLUTX;
-	}
+  if (mSliceJobLUTX) {
+    delete[] mSliceJobLUTX;
+  }
 
-	if (mSliceJobLUTY) {
-		delete[] mSliceJobLUTY;
-	}
+  if (mSliceJobLUTY) {
+    delete[] mSliceJobLUTY;
+  }
 
 #ifndef DEBUG_ONE_JOB
-	int n_threads = params.threads;
-	int n_jobs = 1;
-	for (n_jobs = 1; n_jobs < 4 * n_threads; n_jobs <<= 1);
+  int n_threads = params.threads;
+  int n_jobs = 1;
+  for (n_jobs = 1; n_jobs < 4 * n_threads; n_jobs <<= 1);
 #else
-	int n_threads = 1;
-	int n_jobs = 1;
+  int n_threads = 1;
+  int n_jobs = 1;
 #endif
 
-	mJobs = new JobData*[n_jobs];
-	writelog(LOG_INFO, "Configuring for %d threads, %d jobs", n_threads, n_jobs);
+  mJobs = new JobData*[n_jobs];
+  writelog(LOG_INFO, "Configuring for %d threads, %d jobs", n_threads, n_jobs);
 
-	mWidth = mVideoFormat.frame_width;
-	mHeight = mVideoFormat.frame_height;
-	if (mInterlaced) mHeight /= 2;
+  mWidth = mVideoFormat.frame_width;
+  mHeight = mVideoFormat.frame_height;
+  if (mInterlaced) mHeight /= 2;
 
   int padded_width  = (mWidth  + ( 1 << params.transform_params.wavelet_depth ) - 1)/( 1 << params.transform_params.wavelet_depth )*( 1 << params.transform_params.wavelet_depth );
   int padded_height = (mHeight  + ( 1 << params.transform_params.wavelet_depth ) - 1)/( 1 << params.transform_params.wavelet_depth )*( 1 << params.transform_params.wavelet_depth );
@@ -624,600 +701,796 @@ void VC2Decoder::setParams(VC2DecoderParamsInternal &params) {
     throw VC2DECODER_NOTIMPLEMENTED;
   }
 
-	int slice_width = (padded_width / params.transform_params.slices_x);
-	int slice_height = (padded_height / params.transform_params.slices_y);
+  int slice_width = (padded_width / params.transform_params.slices_x);
+  int slice_height = (padded_height / params.transform_params.slices_y);
 
-	{
+  {
 #ifdef DEBUG_P_BLOCK
-		DEBUG_P_JOB = 0;
-		DEBUG_P_SLICE_Y = DEBUG_P_BLOCK_Y;
-		DEBUG_P_SLICE_X = DEBUG_P_BLOCK_X;
+    DEBUG_P_JOB = 0;
+    DEBUG_P_SLICE_Y = DEBUG_P_BLOCK_Y;
+    DEBUG_P_SLICE_X = DEBUG_P_BLOCK_X;
 #endif
 
-		switch (n_jobs) {
-		case 1:
-			mJobsX = 1;
-			mJobsY = 1;
-			break;
-		case 2:
-			mJobsX = 2;
-			mJobsY = 1;
-			break;
-		case 4:
-			mJobsX = 2;
-			mJobsY = 2;
-			break;
-		case 8:
-			mJobsX = 4;
-			mJobsY = 2;
-			break;
-		case 16:
-			mJobsX = 4;
-			mJobsY = 4;
-			break;
-		case 32:
-			mJobsX = 8;
-			mJobsY = 4;
-			break;
-		case 64:
-			mJobsX = 8;
-			mJobsY = 8;
-			break;
-		default:
-			writelog(LOG_ERROR, "%s:%d:  Invalid number of jobs, only 1, 2, 4, 8, 16, 32, and 64 are currently supported\n", __FILE__, __LINE__);
-			throw VC2DECODER_NOTIMPLEMENTED;
-		}
-		mSliceJobLUTX = new uint8_t[mSlicesX];
-		mSliceJobLUTY = new uint8_t[mSlicesY];
+    switch (n_jobs) {
+    case 1:
+      mJobsX = 1;
+      mJobsY = 1;
+      break;
+    case 2:
+      mJobsX = 2;
+      mJobsY = 1;
+      break;
+    case 4:
+      mJobsX = 2;
+      mJobsY = 2;
+      break;
+    case 8:
+      mJobsX = 4;
+      mJobsY = 2;
+      break;
+    case 16:
+      mJobsX = 4;
+      mJobsY = 4;
+      break;
+    case 32:
+      mJobsX = 8;
+      mJobsY = 4;
+      break;
+    case 64:
+      mJobsX = 8;
+      mJobsY = 8;
+      break;
+    default:
+      writelog(LOG_ERROR, "%s:%d:  Invalid number of jobs, only 1, 2, 4, 8, 16, 32, and 64 are currently supported\n", __FILE__, __LINE__);
+      throw VC2DECODER_NOTIMPLEMENTED;
+    }
+    mSliceJobLUTX = new uint8_t[mSlicesX];
+    mSliceJobLUTY = new uint8_t[mSlicesY];
 
-		int slice_skip_x = 0;
-		int slice_skip_y = 0;
-		int slices_in_output_x = mSlicesX;
-		int slices_in_output_y = mSlicesY;
-		int pixel_margin_pre_x = 0;
-		int pixel_margin_pre_y = 0;
-		int pixel_margin_post_x = (slice_width - (mWidth%slice_width)) % slice_width;
-		int pixel_margin_post_y = (slice_height - (mHeight%slice_height)) % slice_height;
+    int slice_skip_x = 0;
+    int slice_skip_y = 0;
+    int slices_in_output_x = mSlicesX;
+    int slices_in_output_y = mSlicesY;
+    int pixel_margin_pre_x = 0;
+    int pixel_margin_pre_y = 0;
+    int pixel_margin_post_x = (slice_width - (mWidth%slice_width)) % slice_width;
+    int pixel_margin_post_y = (slice_height - (mHeight%slice_height)) % slice_height;
 
-		if (mParams.partial_decode) {
-			slice_skip_x = mParams.partial_decode_offset_x / slice_width;
-			slice_skip_y = mParams.partial_decode_offset_y / slice_height;
-			slices_in_output_x = mSlicesX - slice_skip_x - ((mWidth - mParams.partial_decode_offset_x - mParams.partial_decode_width) / slice_width);
-			slices_in_output_y = mSlicesY - slice_skip_y - ((mHeight - mParams.partial_decode_offset_y - mParams.partial_decode_height) / slice_height);
+    if (mParams.partial_decode) {
+      slice_skip_x = mParams.partial_decode_offset_x / slice_width;
+      slice_skip_y = mParams.partial_decode_offset_y / slice_height;
+      slices_in_output_x = mSlicesX - slice_skip_x - ((mWidth - mParams.partial_decode_offset_x - mParams.partial_decode_width) / slice_width);
+      slices_in_output_y = mSlicesY - slice_skip_y - ((mHeight - mParams.partial_decode_offset_y - mParams.partial_decode_height) / slice_height);
 
-			pixel_margin_pre_x = mParams.partial_decode_offset_x%slice_width;
-			pixel_margin_pre_y = mParams.partial_decode_offset_y%slice_height;
+      pixel_margin_pre_x = mParams.partial_decode_offset_x%slice_width;
+      pixel_margin_pre_y = mParams.partial_decode_offset_y%slice_height;
 
-			pixel_margin_post_x = (mWidth - mParams.partial_decode_offset_x - mParams.partial_decode_width) % slice_width;
-			pixel_margin_post_y = (mHeight - mParams.partial_decode_offset_y - mParams.partial_decode_height) % slice_height;
-		}
+      pixel_margin_post_x = (mWidth - mParams.partial_decode_offset_x - mParams.partial_decode_width) % slice_width;
+      pixel_margin_post_y = (mHeight - mParams.partial_decode_offset_y - mParams.partial_decode_height) % slice_height;
+    }
 
 
-		int spj_x = (slices_in_output_x + mJobsX - 1) / mJobsX;
-		int spj_y = (slices_in_output_y + mJobsY - 1) / mJobsY;
+    int spj_x = (slices_in_output_x + mJobsX - 1) / mJobsX;
+    int spj_y = (slices_in_output_y + mJobsY - 1) / mJobsY;
 
-		mOverlapX = 32 / slice_width;
+    mOverlapX = 32 / slice_width;
 
-		for (int y = 0; y < mJobsY; y++) {
-			int s_y = (y < mJobsY - 1) ? spj_y : slices_in_output_y - y*spj_y;
-			int pad_yz = ((y < mJobsY - 1) ? 1 : 0);
-			int pad_ya = ((y > 0) ? 1 : 0);
+    for (int y = 0; y < mJobsY; y++) {
+      int s_y = (y < mJobsY - 1) ? spj_y : slices_in_output_y - y*spj_y;
+      int pad_yz = ((y < mJobsY - 1) ? 1 : 0);
+      int pad_ya = ((y > 0) ? 1 : 0);
 
-			int PADY_PRE = ((y > 0) ? (slice_height) : (pixel_margin_pre_y));
-			int PADY_POST = ((y < mJobsY - 1) ? 0 : pixel_margin_post_y + pixel_margin_pre_y);
-			for (int x = 0; x < mJobsX; x++) {
-				int s_x = (x < mJobsX - 1) ? spj_x : slices_in_output_x - x*spj_x;
-				int pad_xz = ((x < mJobsX - 1) ? mOverlapX : 0);
-				int pad_xa = ((x > 0) ? mOverlapX : 0);
+      int PADY_PRE = ((y > 0) ? (slice_height) : (pixel_margin_pre_y));
+      int PADY_POST = ((y < mJobsY - 1) ? 0 : pixel_margin_post_y + pixel_margin_pre_y);
+      for (int x = 0; x < mJobsX; x++) {
+        int s_x = (x < mJobsX - 1) ? spj_x : slices_in_output_x - x*spj_x;
+        int pad_xz = ((x < mJobsX - 1) ? mOverlapX : 0);
+        int pad_xa = ((x > 0) ? mOverlapX : 0);
 
-				int PADX_PRE = ((x > 0) ? (mOverlapX*slice_width) : (pixel_margin_pre_x));
-				int PADX_POST = ((x < mJobsX - 1) ? 0 : pixel_margin_post_x + pixel_margin_pre_x);
-				mJobs[y*mJobsX + x] = new JobData(y*mJobsX + x,
-					(pad_xa + s_x + pad_xz)*slice_width,
-					(pad_ya + s_y + pad_yz)*slice_height,
-					mVideoFormat.frame_height,
-					(pad_xa + s_x + pad_xz), (pad_ya + s_y + pad_yz),
-					PADX_PRE,
-					PADY_PRE,
-					s_x*slice_width - PADX_POST, s_y*slice_height - PADY_POST,
-					(x*spj_x)*slice_width, (y*spj_y)*slice_height,
-					x*spj_x - pad_xa, y*spj_y - pad_ya,
-					sample_size);
+        int PADX_PRE = ((x > 0) ? (mOverlapX*slice_width) : (pixel_margin_pre_x));
+        int PADX_POST = ((x < mJobsX - 1) ? 0 : pixel_margin_post_x + pixel_margin_pre_x);
+        int tgt_x = (x*spj_x)*slice_width;
+        int tgt_y = (y*spj_y)*slice_height;
+        int output_w = MIN(s_x*slice_width - PADX_POST, mWidth - tgt_x);
+        int output_h = MIN(s_y*slice_height - PADY_POST, mHeight - tgt_y);
+        mJobs[y*mJobsX + x] = new JobData(y*mJobsX + x,
+          (pad_xa + s_x + pad_xz)*slice_width,
+          (pad_ya + s_y + pad_yz)*slice_height,
+          mVideoFormat.frame_height,
+          (pad_xa + s_x + pad_xz), (pad_ya + s_y + pad_yz),
+          PADX_PRE,
+          PADY_PRE,
+          output_w, output_h,
+          tgt_x, tgt_y,
+          x*spj_x - pad_xa, y*spj_y - pad_ya,
+          sample_size);
 
 #ifdef DEBUG_P_BLOCK
-				if (DEBUG_P_BLOCK_Y >= spj_y*y && DEBUG_P_BLOCK_Y < spj_y*y + s_y &&
-					DEBUG_P_BLOCK_X >= spj_x*x && DEBUG_P_BLOCK_X < spj_x*x + s_x) {
-					DEBUG_P_JOB = y*mJobsX + x;
-					DEBUG_P_SLICE_Y = DEBUG_P_BLOCK_Y - spj_y*y + pad_ya;
-					DEBUG_P_SLICE_X = DEBUG_P_BLOCK_X - spj_x*x + pad_xa;
-				}
+        if (DEBUG_P_BLOCK_Y >= spj_y*y && DEBUG_P_BLOCK_Y < spj_y*y + s_y &&
+          DEBUG_P_BLOCK_X >= spj_x*x && DEBUG_P_BLOCK_X < spj_x*x + s_x) {
+          DEBUG_P_JOB = y*mJobsX + x;
+          DEBUG_P_SLICE_Y = DEBUG_P_BLOCK_Y - spj_y*y + pad_ya;
+          DEBUG_P_SLICE_X = DEBUG_P_BLOCK_X - spj_x*x + pad_xa;
+        }
 #endif
-			}
-		}
+      }
+    }
 
-		{
-			int Y = 0;
-			for (int y = 0; y < slice_skip_y; y++) {
-				mSliceJobLUTY[Y++] = 0x00;
-			}
-			if (mJobsY == 1) {
-				for (int y = 0; y < mJobs[0]->slices_y; y++) {
-					mSliceJobLUTY[Y++] = 0x80;
-				}
-			}
-			else {
-				for (int y = 0; y < mJobs[0]->slices_y - 2; y++) {
-					mSliceJobLUTY[Y++] = 0x80;
-				}
-				mSliceJobLUTY[Y++] = 0xC0;
-				mSliceJobLUTY[Y++] = 0xC0;
-				for (int jy = 1; jy < mJobsY - 1; jy++) {
-					for (int y = 2; y < mJobs[jy*mJobsX]->slices_y - 2; y++) {
-						mSliceJobLUTY[Y++] = 0x80 | (jy & 0x3F);
-					}
-					mSliceJobLUTY[Y++] = 0xC0 | (jy & 0x3F);
-					mSliceJobLUTY[Y++] = 0xC0 | (jy & 0x3F);
-				}
-				for (int y = 2; y < mJobs[(mJobsY - 1)*mJobsX]->slices_y; y++) {
-					mSliceJobLUTY[Y++] = 0x80 | ((mJobsY - 1) & 0x3F);
-				}
-			}
-			while (Y < mSlicesY) {
-				mSliceJobLUTY[Y++] = 0x00;
-			}
-		}
+    {
+      int Y = 0;
+      for (int y = 0; y < slice_skip_y; y++) {
+        mSliceJobLUTY[Y++] = 0x00;
+      }
+      if (mJobsY == 1) {
+        for (int y = 0; y < mJobs[0]->slices_y; y++) {
+          mSliceJobLUTY[Y++] = 0x80;
+        }
+      }
+      else {
+        for (int y = 0; y < mJobs[0]->slices_y - 2; y++) {
+          mSliceJobLUTY[Y++] = 0x80;
+        }
+        mSliceJobLUTY[Y++] = 0xC0;
+        mSliceJobLUTY[Y++] = 0xC0;
+        for (int jy = 1; jy < mJobsY - 1; jy++) {
+          for (int y = 2; y < mJobs[jy*mJobsX]->slices_y - 2; y++) {
+            mSliceJobLUTY[Y++] = 0x80 | (jy & 0x3F);
+          }
+          mSliceJobLUTY[Y++] = 0xC0 | (jy & 0x3F);
+          mSliceJobLUTY[Y++] = 0xC0 | (jy & 0x3F);
+        }
+        for (int y = 2; y < mJobs[(mJobsY - 1)*mJobsX]->slices_y; y++) {
+          mSliceJobLUTY[Y++] = 0x80 | ((mJobsY - 1) & 0x3F);
+        }
+      }
+      while (Y < mSlicesY) {
+        mSliceJobLUTY[Y++] = 0x00;
+      }
+    }
 
-		{
-			int X = 0;
-			for (int x = 0; x < slice_skip_x; x++) {
-				mSliceJobLUTX[X++] = 0x00;
-			}
-			if (mJobsX == 1) {
-				for (int x = 0; x < mJobs[0]->slices_x; x++) {
-					mSliceJobLUTX[X++] = 0x80;
-				}
-			}
-			else {
-				for (int x = 0; x < mJobs[0]->slices_x - 2 * mOverlapX; x++) {
-					mSliceJobLUTX[X++] = 0x80;
-				}
-				for (int x = 0; x < 2 * mOverlapX; x++) {
-					mSliceJobLUTX[X++] = 0xC0;
-				}
-				for (int jx = 1; jx < mJobsX - 1; jx++) {
-					for (int x = 2 * mOverlapX; x < mJobs[jx]->slices_x - 2 * mOverlapX; x++) {
-						mSliceJobLUTX[X++] = 0x80 | (jx & 0x3F);
-					}
-					for (int x = 0; x < 2 * mOverlapX; x++) {
-						mSliceJobLUTX[X++] = 0xC0 | (jx & 0x3F);
-					}
-				}
-				for (int x = 2 * mOverlapX; x < mJobs[(mJobsX - 1)]->slices_x; x++) {
-					mSliceJobLUTX[X++] = 0x80 | ((mJobsX - 1) & 0x3F);
-				}
-			}
-			while (X < mSlicesX) {
-				mSliceJobLUTX[X++] = 0x00;
-			}
-		}
-	}
+    {
+      int X = 0;
+      for (int x = 0; x < slice_skip_x; x++) {
+        mSliceJobLUTX[X++] = 0x00;
+      }
+      if (mJobsX == 1) {
+        for (int x = 0; x < mJobs[0]->slices_x; x++) {
+          mSliceJobLUTX[X++] = 0x80;
+        }
+      }
+      else {
+        for (int x = 0; x < mJobs[0]->slices_x - 2 * mOverlapX; x++) {
+          mSliceJobLUTX[X++] = 0x80;
+        }
+        for (int x = 0; x < 2 * mOverlapX; x++) {
+          mSliceJobLUTX[X++] = 0xC0;
+        }
+        for (int jx = 1; jx < mJobsX - 1; jx++) {
+          for (int x = 2 * mOverlapX; x < mJobs[jx]->slices_x - 2 * mOverlapX; x++) {
+            mSliceJobLUTX[X++] = 0x80 | (jx & 0x3F);
+          }
+          for (int x = 0; x < 2 * mOverlapX; x++) {
+            mSliceJobLUTX[X++] = 0xC0 | (jx & 0x3F);
+          }
+        }
+        for (int x = 2 * mOverlapX; x < mJobs[(mJobsX - 1)]->slices_x; x++) {
+          mSliceJobLUTX[X++] = 0x80 | ((mJobsX - 1) & 0x3F);
+        }
+      }
+      while (X < mSlicesX) {
+        mSliceJobLUTX[X++] = 0x00;
+      }
+    }
+  }
 
-	if (mMatrices)
-		delete_matrices(mMatrices);
+  if (mMatrices)
+    delete_matrices(mMatrices);
 
-	mMatrices = quantisation_matrices(params.transform_params.wavelet_index, params.transform_params.wavelet_depth, 256);
+  mMatrices = quantisation_matrices(params.transform_params.wavelet_index, params.transform_params.wavelet_depth, 256);
 
-	if (mPool) {
-		mPool->stop();
-		delete mPool;
-		mPool = NULL;
-	}
+  if (mPool) {
+    mPool->stop();
+    delete mPool;
+    mPool = NULL;
+  }
 
-	mThreads = n_threads;
-	if (mThreads > 1)
-		mPool = new ThreadPool(mThreads, params.numa_first_node);
+  mThreads = n_threads;
+  if (mThreads > 1)
+    mPool = new ThreadPool(mThreads, params.numa_first_node);
 
-	mParams = params;
+  mParams = params;
 
-	if (transforms_h)
-		delete[] transforms_h;
-	transforms_h = new InplaceTransform[params.transform_params.wavelet_depth - 1];
-	for (int l = 0; l < (int)params.transform_params.wavelet_depth - 1; l++)
-		transforms_h[l] = get_invhtransform(params.transform_params.wavelet_index, l, params.transform_params.wavelet_depth, sample_size);
+  if (transforms_h)
+    delete[] transforms_h;
+  transforms_h = new InplaceTransform[params.transform_params.wavelet_depth - 1];
+  for (int l = 0; l < (int)params.transform_params.wavelet_depth - 1; l++)
+    transforms_h[l] = get_invhtransform(params.transform_params.wavelet_index, l, params.transform_params.wavelet_depth, sample_size);
 
-	transforms_final = get_invhtransformfinal(params.transform_params.wavelet_index, 10, sample_size);
+  int active_bits = 10;
+  if (mOutputFormat.signal_range == VC2DECODER_PSR_10BITVID)
+    active_bits = 10;
+  else if (mOutputFormat.signal_range == VC2DECODER_PSR_12BITVID)
+    active_bits = 12;
+  else {
+    writelog(LOG_ERROR, "%s:%d:  Only 10-bit and 12-bit data are supported", __FILE__, __LINE__);
+    throw VC2DECODER_NOTIMPLEMENTED;
+  }
+  transforms_final = get_invhtransformfinal(params.transform_params.wavelet_index, active_bits, sample_size);
 
-	if (transforms_v)
-		delete[] transforms_v;
-	transforms_v = new InplaceTransform[params.transform_params.wavelet_depth];
-	for (int l = 0; l < (int)params.transform_params.wavelet_depth; l++)
-		transforms_v[l] = get_invvtransform(params.transform_params.wavelet_index, l, params.transform_params.wavelet_depth, sample_size);
+  if (transforms_v)
+    delete[] transforms_v;
+  transforms_v = new InplaceTransform[params.transform_params.wavelet_depth];
+  for (int l = 0; l < (int)params.transform_params.wavelet_depth; l++)
+    transforms_v[l] = get_invvtransform(params.transform_params.wavelet_index, l, params.transform_params.wavelet_depth, sample_size);
 
-	mDequant[0] = getDequantiseFunction(slice_width, slice_height, mParams.transform_params.wavelet_depth, sample_size);
-	mDequant[1] = getDequantiseFunction(slice_width / 2, slice_height, mParams.transform_params.wavelet_depth, sample_size);
-	mDequant[2] = getDequantiseFunction(slice_width / 2, slice_height, mParams.transform_params.wavelet_depth, sample_size);
+  mDequant[0] = getDequantiseFunction(slice_width, slice_height, mParams.transform_params.wavelet_depth, sample_size);
+  mDequant[1] = getDequantiseFunction(slice_width / 2, slice_height, mParams.transform_params.wavelet_depth, sample_size);
+  mDequant[2] = getDequantiseFunction(slice_width / 2, slice_height, mParams.transform_params.wavelet_depth, sample_size);
 
-	mSliceDecoder = get_slice_decoder(sample_size);
+  mSliceDecoder = get_slice_decoder(sample_size);
 
   mSampleSize = sample_size;
 
 #ifdef DEBUG_P_BLOCK
-	DEBUG_P_SLICE_W = (DEBUG_P_COMP == 0) ? slice_width : slice_width / 2;
-	DEBUG_P_SLICE_H = slice_height;
+  DEBUG_P_SLICE_W = (DEBUG_P_COMP == 0) ? slice_width : slice_width / 2;
+  DEBUG_P_SLICE_H = slice_height;
 #endif
 }
 
-int VC2Decoder::processTransformParams(uint8_t *_idata, int ilength) {
-	(void)ilength;
-	uint8_t *idata = (uint8_t *)_idata;
+int VC2Decoder::processTransformParams(uint8_t *_idata, int ilength)  throw (VC2DecoderResult) {
+  (void)ilength;
+  uint8_t *idata = (uint8_t *)_idata;
+  const uint8_t *iend = _idata + ilength;
 
-	if (!mConfigured || !mTransformParamsEncoded || mTransformParamsEncodedLength == 0 || memcmp(mTransformParamsEncoded, idata, mTransformParamsEncodedLength)) {
-		writelog(LOG_INFO, "Processing Transform Params");
-		int bits = 7;
-		VC2DecoderTransformParams transform_params;
-		transform_params.wavelet_index = read_uint(idata, bits);
-		transform_params.wavelet_depth = read_uint(idata, bits);
-		transform_params.slices_x = read_uint(idata, bits);
-		transform_params.slices_y = read_uint(idata, bits);
-		int prefix_bytes = read_uint(idata, bits);
-		int slice_size_scalar = read_uint(idata, bits);
+  if (!mConfigured || !mTransformParamsEncoded || mTransformParamsEncodedLength == 0 || memcmp(mTransformParamsEncoded, idata, mTransformParamsEncodedLength)) {
+    writelog(LOG_INFO, "Processing Transform Params");
+    int bits = 7;
+    VC2DecoderTransformParams transform_params;
+    transform_params.wavelet_index = read_uint(idata, bits, iend);
+    transform_params.wavelet_depth = read_uint(idata, bits, iend);
+    if (mMajorVersion >= 3) {
+      transform_params.asym_transform_index_flag = read_bool(idata, bits, iend);
+      if (transform_params.asym_transform_index_flag) {
+        transform_params.wavelet_index_ho = read_uint(idata, bits, iend);
+        writelog(LOG_ERROR, "%s:%d: Asymmetrical transform specified, but this isn't yet implemnted", __FILE__, __LINE__);
+        throw VC2DECODER_NOTIMPLEMENTED;
+      }
+      transform_params.asym_transform_flag = read_bool(idata, bits, iend);
+      if (transform_params.asym_transform_flag) {
+        transform_params.wavelet_depth_ho = read_uint(idata, bits, iend);
+        writelog(LOG_ERROR, "%s:%d: Asymmetrical transform specified, but this isn't yet implemnted", __FILE__, __LINE__);
+        throw VC2DECODER_NOTIMPLEMENTED;
+      }
+    }
+    transform_params.slices_x = read_uint(idata, bits, iend);
+    transform_params.slices_y = read_uint(idata, bits, iend);
+    int prefix_bytes = read_uint(idata, bits, iend);
+    int slice_size_scalar = read_uint(idata, bits, iend);
 
-		transform_params.custom_quant_matrix_flag = read_bool(idata, bits);
-		if (transform_params.custom_quant_matrix_flag) {
-			transform_params.quant_matrix_LL = read_uint(idata, bits);
-			for (int l = 0; l < (int)transform_params.wavelet_depth - 1; l++) {
-				transform_params.quant_matrix_HL[l] = read_uint(idata, bits);
-				transform_params.quant_matrix_LH[l] = read_uint(idata, bits);
-				transform_params.quant_matrix_HH[l] = read_uint(idata, bits);
-			}
-		}
-		byte_align(idata, bits);
+    transform_params.custom_quant_matrix_flag = read_bool(idata, bits, iend);
+    if (transform_params.custom_quant_matrix_flag) {
+      transform_params.quant_matrix_LL = read_uint(idata, bits, iend);
+      for (int l = 0; l < (int)transform_params.wavelet_depth - 1; l++) {
+        transform_params.quant_matrix_HL[l] = read_uint(idata, bits, iend);
+        transform_params.quant_matrix_LH[l] = read_uint(idata, bits, iend);
+        transform_params.quant_matrix_HH[l] = read_uint(idata, bits, iend);
+      }
+    }
+    byte_align(idata, bits);
 
-		mTransformParamsEncodedLength = (idata - (uint8_t*)_idata);
-		if (mTransformParamsEncoded)
-			delete[] mTransformParamsEncoded;
-		mTransformParamsEncoded = new uint8_t[mTransformParamsEncodedLength];
-		memcpy(mTransformParamsEncoded, _idata, mTransformParamsEncodedLength);
+    mTransformParamsEncodedLength = (idata - (uint8_t*)_idata);
+    if (mTransformParamsEncoded)
+      delete[] mTransformParamsEncoded;
+    mTransformParamsEncoded = new uint8_t[mTransformParamsEncodedLength];
+    memcpy(mTransformParamsEncoded, _idata, mTransformParamsEncodedLength);
 
-		VC2DecoderParamsInternal params = mParams;
-		params.transform_params = transform_params;
-		params.slice_size_scalar = slice_size_scalar;
-		params.slice_prefix_bytes = prefix_bytes;
-		setParams(params);
+    VC2DecoderParamsInternal params = mParams;
+    params.transform_params = transform_params;
+    params.slice_size_scalar = slice_size_scalar;
+    params.slice_prefix_bytes = prefix_bytes;
+    try {
+      setParams(params);
+    } catch (VC2DecoderResult &r) {
+      writelog(LOG_ERROR, "Error2: %d", r);
+      throw;
+    }
 
-		mSequenceInfo.transform_params = transform_params;
+    mSequenceInfo.transform_params = transform_params;
 
-		mConfigured = true;
+    mConfigured = true;
 
 #ifdef DEBUG
-		{
-			printf("--------------------------------------------------------------------\n");
-			printf("   Picture Header Stream Data\n");
-			printf("--------------------------------------------------------------------\n");
-			uint8_t *data = (uint8_t *)&_idata;
-			for (int y = 0; y * 16 < mTransformParamsEncodedLength; y++) {
-				printf("    ");
-				for (int x = 0; x < 16 && y * 16 + x < mTransformParamsEncodedLength; x++) {
-					printf("  %02x", data[y * 16 + x]);
-				}
-				printf("\n");
-			}
-			printf("--------------------------------------------------------------------\n");
-		}
+    {
+      printf("--------------------------------------------------------------------\n");
+      printf("   Picture Header Stream Data\n");
+      printf("--------------------------------------------------------------------\n");
+      uint8_t *data = (uint8_t *)&_idata;
+      for (int y = 0; y * 16 < mTransformParamsEncodedLength; y++) {
+        printf("    ");
+        for (int x = 0; x < 16 && y * 16 + x < mTransformParamsEncodedLength; x++) {
+          printf("  %02x", data[y * 16 + x]);
+        }
+        printf("\n");
+      }
+      printf("--------------------------------------------------------------------\n");
+    }
 #endif
-	}
-	else {
-		idata += mTransformParamsEncodedLength;
-	}
+  }
+  else {
+    idata += mTransformParamsEncodedLength;
+  }
 
-	return idata - _idata;
+  return idata - _idata;
 }
 
 uint64_t VC2Decoder::decodeFrame(char *_idata, int ilength, uint16_t **odata, int *ostride) {
-	uint8_t *idata = (uint8_t *)_idata;
+  uint8_t *idata = (uint8_t *)_idata;
 
-	// Start by parsing picture header and transform parameters
-	uint32_t picture_number = ((idata[0] << 24) |
-		(idata[1] << 16) |
-		(idata[2] << 8) |
-		(idata[3] << 0));
-	mSequenceInfo.last_picture_number = picture_number;
-	idata += 4;
+  // Start by parsing picture header and transform parameters
+  uint32_t picture_number = ((idata[0] << 24) |
+    (idata[1] << 16) |
+    (idata[2] << 8) |
+    (idata[3] << 0));
+  mSequenceInfo.last_picture_number = picture_number;
+  idata += 4;
 
-	idata += processTransformParams(idata, ilength);
+  try {
+    idata += processTransformParams(idata, ilength);
+  } catch(VC2DecoderResult &r) {
+    writelog(LOG_ERROR, "Error3: %d", r);
+    throw;
+  }
 
-	int preamble = idata - (uint8_t*)_idata;
+  int preamble = idata - (uint8_t*)_idata;
 
-	// Now decode the frame
-	uint64_t length = SliceInput((char *)idata, ilength - preamble, mJobs);
+  // Now decode the frame
+  uint64_t length = SliceInput((char *)idata, ilength - preamble, mJobs);
 
 #ifndef DEBUG
-	if (mThreads > 1) {
-		mPool->ready();
-		for (int n = 0; n < mJobsX*mJobsY; n++)
-			mPool->post(std::bind(&VC2Decoder::Decode, this, mJobs[n], odata, ostride));
-		if (mPool->execute())
-			throw VC2DECODER_DECODE_FAILED;
-	}
-	else
+  if (mThreads > 1) {
+    mPool->ready();
+    for (int n = 0; n < mJobsX*mJobsY; n++)
+      mPool->post(std::bind(&VC2Decoder::Decode, this, mJobs[n], odata, ostride));
+    if (mPool->execute())
+      throw VC2DECODER_DECODE_FAILED;
+  }
+  else
 #endif /*DEBUG*/
-	{
-		for (int n = 0; n < mJobsX*mJobsY; n++)
-			Decode(mJobs[n], odata, ostride);
-	}
-	mSequenceInfo.pictures_decoded++;
+  {
+    for (int n = 0; n < mJobsX*mJobsY; n++)
+      Decode(mJobs[n], odata, ostride);
+  }
+  mSequenceInfo.pictures_decoded++;
 
-	return length;
+  return length;
+}
+
+bool VC2Decoder::handleFragment(char *_idata, int ilength, uint16_t **odata, int *ostride) {
+  uint8_t *idata = (uint8_t *)_idata;
+
+  // Start by parsing picture header and fragment header
+  uint32_t picture_number = ((idata[0] << 24) |
+                             (idata[1] << 16) |
+                             (idata[2] << 8) |
+                             (idata[3] << 0));
+  uint32_t fragment_data_length = ((idata[4] << 8) |
+                                   (idata[5] << 0));
+  uint32_t fragment_slice_count = ((idata[6] << 8) |
+                                   (idata[7] << 0));
+
+  if (fragment_slice_count == 0) {
+    mSequenceInfo.last_picture_number = picture_number;
+    idata += 8;
+
+    idata += processTransformParams(idata, fragment_data_length);
+
+    mSlicesSlicedFromFragments = 0;
+
+    return false;
+  } else {
+    uint32_t fragment_x_offset = ((idata[8] << 8) |
+                                  (idata[9] << 0));
+    uint32_t fragment_y_offset = ((idata[10] << 8) |
+                                  (idata[11] << 0));
+    SliceInputFragment((char *)(idata + 12), ilength - 12, fragment_slice_count, fragment_x_offset, fragment_y_offset, mJobs);
+    mSlicesSlicedFromFragments += fragment_slice_count;
+
+    if (mSlicesSlicedFromFragments >= mSlicesX*mSlicesY) {
+#ifndef DEBUG
+      if (mThreads > 1) {
+        mPool->ready();
+        for (int n = 0; n < mJobsX*mJobsY; n++)
+          mPool->post(std::bind(&VC2Decoder::Decode, this, mJobs[n], odata, ostride));
+        if (mPool->execute())
+          throw VC2DECODER_DECODE_FAILED;
+      }
+      else
+#endif /*DEBUG*/
+        {
+          for (int n = 0; n < mJobsX*mJobsY; n++)
+            Decode(mJobs[n], odata, ostride);
+        }
+      mSequenceInfo.pictures_decoded++;
+      return true;
+    }
+
+    return false;
+  }
+}
+
+uint64_t VC2Decoder::SliceInputFragment(char *_idata, int ilength, int n_slices, int x_offset, int y_offset, JobData **jobs) {
+  int lastlength = mParams.slice_prefix_bytes;
+  char *idata = _idata;
+  int slice_num = 0;
+  int sy = y_offset;
+  int sx = x_offset;
+
+  while (slice_num < n_slices && sy < mSlicesY) {
+    if (((mSliceJobLUTY[sy] & 0x80) == 0) ||
+        ((mSliceJobLUTX[sx] & 0x80) == 0)) {
+      idata += lastlength + 1;
+      int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+      idata += length;
+#ifdef DEBUG_OP_SLICESIZES
+      writelog(LOG_INFO, "  skip   %6d\n", length);
+#endif
+      length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+      idata += length;
+#ifdef DEBUG_OP_SLICESIZES
+      writelog(LOG_INFO, "  skip   %6d\n", length);
+#endif
+      lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
+#ifdef DEBUG_OP_SLICESIZES
+      writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
+#endif
+    } else {
+      JobData *job = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
+      const int n = (sy - job->slice_start_y)*job->slices_x + (sx - job->slice_start_x);
+
+      idata += lastlength;
+      if (idata > _idata + ilength) {
+        writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+        throw VC2DECODER_CODEROVERRUN;
+      }
+
+      job->coded_slices[n].qindex = (int)(*((uint8_t *)idata++));
+      job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+
+#ifdef DEBUG_OP_SLICESIZES
+      writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[0]);
+#endif
+
+      job->coded_slices[n].data[0] = idata;
+      idata += job->coded_slices[n].length[0];
+      if (idata > _idata + ilength) {
+        writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+        throw VC2DECODER_CODEROVERRUN;
+      }
+
+      job->coded_slices[n].length[1] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+
+#ifdef DEBUG_OP_SLICESIZES
+      writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[1]);
+#endif
+
+      job->coded_slices[n].data[1] = idata;
+      idata += job->coded_slices[n].length[1];
+      if (idata > _idata + ilength) {
+        writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+        throw VC2DECODER_CODEROVERRUN;
+      }
+
+      job->coded_slices[n].length[2] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+
+#ifdef DEBUG_OP_SLICESIZES
+      writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[2]);
+#endif
+
+      job->coded_slices[n].data[2] = idata;
+
+      lastlength = job->coded_slices[n].length[2] + mParams.slice_prefix_bytes;
+
+      if ((mSliceJobLUTX[sx] & 0xC0) == 0xC0) {
+        JobData *njob_x = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
+        const int nn_x = (sy - njob_x->slice_start_y)*njob_x->slices_x + (sx - njob_x->slice_start_x);
+        memcpy((char *)&njob_x->coded_slices[nn_x],
+               (char *)&job->coded_slices[n],
+               sizeof(CodedSlice));
+      }
+
+      if ((mSliceJobLUTY[sy] & 0xC0) == 0xC0) {
+        JobData *njob_y = jobs[((mSliceJobLUTY[sy] & 0x3F) + 1)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
+        const int nn_y = (sy - njob_y->slice_start_y)*njob_y->slices_x + (sx - njob_y->slice_start_x);
+        memcpy((char *)&njob_y->coded_slices[nn_y],
+               (char *)&job->coded_slices[n],
+               sizeof(CodedSlice));
+      }
+
+      if (((mSliceJobLUTX[sx] & 0xC0) == 0xC0) &&
+          ((mSliceJobLUTY[sy] & 0xC0) == 0xC0)){
+        JobData *njob_xy = jobs[((mSliceJobLUTY[sy] & 0x3F) + 1)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
+        const int nn_xy = (sy - njob_xy->slice_start_y)*njob_xy->slices_x + (sx - njob_xy->slice_start_x);
+        memcpy((char *)&njob_xy->coded_slices[nn_xy],
+               (char *)&job->coded_slices[n],
+               sizeof(CodedSlice));
+      }
+    }
+
+    slice_num++;
+    sx++;
+    if (sx == mSlicesX) {
+      sx = 0;
+      sy++;
+    }
+  }
+
+  return (((uint64_t)idata) + 1 + lastlength) - ((uint64_t)_idata);
 }
 
 uint64_t VC2Decoder::SliceInput(char *_idata, int ilength, JobData **jobs) {
-	int lastlength = mParams.slice_prefix_bytes;
-	char *idata = _idata;
+  int lastlength = mParams.slice_prefix_bytes;
+  char *idata = _idata;
 
-	for (int sy = 0; sy < mSlicesY; sy++) {
-		if ((mSliceJobLUTY[sy] & 0x80) == 0) {
-			for (int sx = 0; sx < mSlicesX; sx++) {
-				idata += lastlength + 1;
-				int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
-				idata += length;
+  for (int sy = 0; sy < mSlicesY; sy++) {
+    if ((mSliceJobLUTY[sy] & 0x80) == 0) {
+      for (int sx = 0; sx < mSlicesX; sx++) {
+        idata += lastlength + 1;
+        int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+        idata += length;
 #ifdef DEBUG_OP_SLICESIZES
-				writelog(LOG_INFO, "  skip   %6d\n", length);
+        writelog(LOG_INFO, "  skip   %6d\n", length);
 #endif
-				length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
-				idata += length;
+        length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+        idata += length;
 #ifdef DEBUG_OP_SLICESIZES
-				writelog(LOG_INFO, "  skip   %6d\n", length);
+        writelog(LOG_INFO, "  skip   %6d\n", length);
 #endif
-				lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
+        lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
 #ifdef DEBUG_OP_SLICESIZES
-				writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
+        writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
 #endif
-			}
-		}
-		else if ((mSliceJobLUTY[sy] & 0xC0) == 0x80) {
+      }
+    }
+    else if ((mSliceJobLUTY[sy] & 0xC0) == 0x80) {
 
-			for (int sx = 0; sx < mSlicesX; sx++) {
-				if ((mSliceJobLUTX[sx] & 0x80) == 0x00) {
-					idata += lastlength + 1;
-					int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
-					idata += length;
+      for (int sx = 0; sx < mSlicesX; sx++) {
+        if ((mSliceJobLUTX[sx] & 0x80) == 0x00) {
+          idata += lastlength + 1;
+          int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          idata += length;
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  skip   %6d\n", length);
+          writelog(LOG_INFO, "  skip   %6d\n", length);
 #endif
-					length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
-					idata += length;
+          length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          idata += length;
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  skip   %6d\n", length);
+          writelog(LOG_INFO, "  skip   %6d\n", length);
 #endif
-					lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
+          lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
+          writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
 #endif
-				}
-				else {
+        }	else {
+          JobData *job = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
+          const int n = (sy - job->slice_start_y)*job->slices_x + (sx - job->slice_start_x);
 
-					JobData *job = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
-					const int n = (sy - job->slice_start_y)*job->slices_x + (sx - job->slice_start_x);
+          idata += lastlength;
+          if (idata > _idata + ilength) {
+            writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+            throw VC2DECODER_CODEROVERRUN;
+          }
 
-					idata += lastlength;
-					if (idata > _idata + ilength) {
-						writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
-						throw VC2DECODER_CODEROVERRUN;
-					}
-
-					job->coded_slices[n].qindex = (int)(*(idata++));
-					job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          job->coded_slices[n].qindex = (int)(*((uint8_t *)idata++));
+          job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[0]);
+          writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[0]);
 #endif
 
-					job->coded_slices[n].data[0] = idata;
-					idata += job->coded_slices[n].length[0];
-					if (idata > _idata + ilength) {
-						writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
-						throw VC2DECODER_CODEROVERRUN;
-					}
+          job->coded_slices[n].data[0] = idata;
+          idata += job->coded_slices[n].length[0];
+          if (idata > _idata + ilength) {
+            writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+            throw VC2DECODER_CODEROVERRUN;
+          }
 
-					job->coded_slices[n].length[1] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          job->coded_slices[n].length[1] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[1]);
+          writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[1]);
 #endif
 
-					job->coded_slices[n].data[1] = idata;
-					idata += job->coded_slices[n].length[1];
-					if (idata > _idata + ilength) {
-						writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
-						throw VC2DECODER_CODEROVERRUN;
-					}
+          job->coded_slices[n].data[1] = idata;
+          idata += job->coded_slices[n].length[1];
+          if (idata > _idata + ilength) {
+            writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+            throw VC2DECODER_CODEROVERRUN;
+          }
 
-					job->coded_slices[n].length[2] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          job->coded_slices[n].length[2] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[2]);
+          writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[2]);
 #endif
 
-					job->coded_slices[n].data[2] = idata;
+          job->coded_slices[n].data[2] = idata;
 
-					lastlength = job->coded_slices[n].length[2] + mParams.slice_prefix_bytes;
+          lastlength = job->coded_slices[n].length[2] + mParams.slice_prefix_bytes;
 
-					if ((mSliceJobLUTX[sx] & 0xC0) == 0xC0) {
-						JobData *njob_x = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
-						const int nn_x = (sy - njob_x->slice_start_y)*njob_x->slices_x + (sx - njob_x->slice_start_x);
-						memcpy((char *)&njob_x->coded_slices[nn_x],
-							(char *)&job->coded_slices[n],
-							sizeof(CodedSlice));
-					}
-				}
-			}
+          if ((mSliceJobLUTX[sx] & 0xC0) == 0xC0) {
+            JobData *njob_x = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
+            const int nn_x = (sy - njob_x->slice_start_y)*njob_x->slices_x + (sx - njob_x->slice_start_x);
+            memcpy((char *)&njob_x->coded_slices[nn_x],
+              (char *)&job->coded_slices[n],
+              sizeof(CodedSlice));
+          }
+        }
+      }
 
-		}
-		else {
+    }	else {
 
-			for (int sx = 0; sx < mSlicesX; sx++) {
-				if ((mSliceJobLUTX[sx] & 0x80) == 0x00) {
-					idata += lastlength + 1;
-					int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
-					idata += length;
+      for (int sx = 0; sx < mSlicesX; sx++) {
+        if ((mSliceJobLUTX[sx] & 0x80) == 0x00) {
+          idata += lastlength + 1;
+          int length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          idata += length;
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  skip   %6d\n", length);
+          writelog(LOG_INFO, "  skip   %6d\n", length);
 #endif
-					length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
-					idata += length;
+          length = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          idata += length;
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  skip   %6d\n", length);
+          writelog(LOG_INFO, "  skip   %6d\n", length);
 #endif
-					lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
+          lastlength = ((int)(*((uint8_t *)idata++))*mParams.slice_size_scalar) + mParams.slice_prefix_bytes;
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
+          writelog(LOG_INFO, "  skip   %6d\n", lastlength - mParams.slice_prefix_bytes);
 #endif
-				}
-				else {
+        } else {
 
-					JobData *job = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
-					const int n = (sy - job->slice_start_y)*job->slices_x + (sx - job->slice_start_x);
+          JobData *job = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
+          const int n = (sy - job->slice_start_y)*job->slices_x + (sx - job->slice_start_x);
 
-					JobData *njob_y = jobs[((mSliceJobLUTY[sy] & 0x3F) + 1)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
-					const int nn_y = (sy - njob_y->slice_start_y)*njob_y->slices_x + (sx - njob_y->slice_start_x);
+          JobData *njob_y = jobs[((mSliceJobLUTY[sy] & 0x3F) + 1)*mJobsX + (mSliceJobLUTX[sx] & 0x3f)];
+          const int nn_y = (sy - njob_y->slice_start_y)*njob_y->slices_x + (sx - njob_y->slice_start_x);
 
-					idata += lastlength;
-					if (idata > _idata + ilength) {
-						writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
-						throw VC2DECODER_CODEROVERRUN;
-					}
+          idata += lastlength;
+          if (idata > _idata + ilength) {
+            writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+            throw VC2DECODER_CODEROVERRUN;
+          }
 
-					job->coded_slices[n].qindex = (int)(*(idata++));
-					job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          job->coded_slices[n].qindex = (int)(*((uint8_t *)idata++));
+          job->coded_slices[n].length[0] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[0]);
+          writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[0]);
 #endif
 
-					job->coded_slices[n].data[0] = idata;
-					idata += job->coded_slices[n].length[0];
-					if (idata > _idata + ilength) {
-						writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
-						throw VC2DECODER_CODEROVERRUN;
-					}
+          job->coded_slices[n].data[0] = idata;
+          idata += job->coded_slices[n].length[0];
+          if (idata > _idata + ilength) {
+            writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+            throw VC2DECODER_CODEROVERRUN;
+          }
 
-					job->coded_slices[n].length[1] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          job->coded_slices[n].length[1] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[1]);
+          writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[1]);
 #endif
 
-					job->coded_slices[n].data[1] = idata;
-					idata += job->coded_slices[n].length[1];
-					if (idata > _idata + ilength) {
-						writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
-						throw VC2DECODER_CODEROVERRUN;
-					}
+          job->coded_slices[n].data[1] = idata;
+          idata += job->coded_slices[n].length[1];
+          if (idata > _idata + ilength) {
+            writelog(LOG_ERROR, "%s:%d:  Coder Overrun: %d > %d\n", __FILE__, __LINE__, (int)(idata - _idata), ilength);
+            throw VC2DECODER_CODEROVERRUN;
+          }
 
-					job->coded_slices[n].length[2] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
+          job->coded_slices[n].length[2] = (int)(*((uint8_t *)idata++))*mParams.slice_size_scalar;
 
 #ifdef DEBUG_OP_SLICESIZES
-					writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[2]);
+          writelog(LOG_INFO, "  %5u  %6d\n", n, job->coded_slices[n].length[2]);
 #endif
 
-					job->coded_slices[n].data[2] = idata;
+          job->coded_slices[n].data[2] = idata;
 
-					lastlength = job->coded_slices[n].length[2] + mParams.slice_prefix_bytes;
+          lastlength = job->coded_slices[n].length[2] + mParams.slice_prefix_bytes;
 
-					memcpy((char *)&njob_y->coded_slices[nn_y],
-						(char *)&job->coded_slices[n],
-						sizeof(CodedSlice));
+          memcpy((char *)&njob_y->coded_slices[nn_y],
+            (char *)&job->coded_slices[n],
+            sizeof(CodedSlice));
 
-					if ((mSliceJobLUTX[sx] & 0xC0) == 0xC0) {
-						JobData *njob_x = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
-						const int nn_x = (sy - njob_x->slice_start_y)*njob_x->slices_x + (sx - njob_x->slice_start_x);
-						JobData *njob_xy = jobs[((mSliceJobLUTY[sy] & 0x3F) + 1)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
-						const int nn_xy = (sy - njob_xy->slice_start_y)*njob_xy->slices_x + (sx - njob_xy->slice_start_x);
-						memcpy((char *)&njob_x->coded_slices[nn_x],
-							(char *)&job->coded_slices[n],
-							sizeof(CodedSlice));
-						memcpy((char *)&njob_xy->coded_slices[nn_xy],
-							(char *)&job->coded_slices[n],
-							sizeof(CodedSlice));
-					}
-				}
-			}
-		}
-	}
+          if ((mSliceJobLUTX[sx] & 0xC0) == 0xC0) {
+            JobData *njob_x = jobs[(mSliceJobLUTY[sy] & 0x3F)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
+            const int nn_x = (sy - njob_x->slice_start_y)*njob_x->slices_x + (sx - njob_x->slice_start_x);
+            JobData *njob_xy = jobs[((mSliceJobLUTY[sy] & 0x3F) + 1)*mJobsX + (mSliceJobLUTX[sx] & 0x3f) + 1];
+            const int nn_xy = (sy - njob_xy->slice_start_y)*njob_xy->slices_x + (sx - njob_xy->slice_start_x);
+            memcpy((char *)&njob_x->coded_slices[nn_x],
+              (char *)&job->coded_slices[n],
+              sizeof(CodedSlice));
+            memcpy((char *)&njob_xy->coded_slices[nn_xy],
+              (char *)&job->coded_slices[n],
+              sizeof(CodedSlice));
+          }
+        }
+      }
+    }
+  }
 
 #ifdef DEBUG_OP_LENGTHS
-	{
-		int f = open("length_dump.raw", O_WRONLY | O_CREAT | O_TRUNC, 00777);
-		for (int j = 0; j < mJobsX*mJobsY; j++) {
-			for (int n = 0; n < jobs[j]->slices_y*jobs[j]->slices_x; n++) {
-				write(f, jobs[j]->coded_slices[n].length, sizeof(int) * 3);
-			}
-		}
-		close(f);
-	}
+  {
+    int f = open("length_dump.raw", O_WRONLY | O_CREAT | O_TRUNC, 00777);
+    for (int j = 0; j < mJobsX*mJobsY; j++) {
+      for (int n = 0; n < jobs[j]->slices_y*jobs[j]->slices_x; n++) {
+        write(f, jobs[j]->coded_slices[n].length, sizeof(int) * 3);
+      }
+    }
+    close(f);
+  }
 #endif /* DEBUG_OP_LENGTHS */
 
 #ifdef DEBUG_P_BLOCK
-	CodedSlice *slice = &mJobs[DEBUG_P_JOB]->coded_slices[DEBUG_P_SLICE_Y*mJobs[DEBUG_P_JOB]->slices_x + DEBUG_P_SLICE_X];
-	{
-		printf("-----------------------------------------------------------------\n");
-		printf("  Deserialised\n");
-		printf("-----------------------------------------------------------------\n");
-		printf("    %02x (%d)\n", slice->qindex, slice->qindex);
-		for (int c = 0; c < 3; c++) {
-			printf("    %02x (%d)\n", slice->length[c], slice->length[c]);
-			for (int y = 0; y < (slice->length[c] + 15) / 16; y++) {
-				printf("    ");
-				for (int x = 0; x < 16 && y * 16 + x < slice->length[c]; x++) {
-					printf("%02x ", ((uint8_t *)(slice->data[c]))[y * 16 + x]);
-				}
-				printf("\n");
-			}
-		}
-		printf("-----------------------------------------------------------------\n");
-	}
+  CodedSlice *slice = &mJobs[DEBUG_P_JOB]->coded_slices[DEBUG_P_SLICE_Y*mJobs[DEBUG_P_JOB]->slices_x + DEBUG_P_SLICE_X];
+  {
+    printf("-----------------------------------------------------------------\n");
+    printf("  Deserialised\n");
+    printf("-----------------------------------------------------------------\n");
+    printf("    %02x (%d)\n", slice->qindex, slice->qindex);
+    for (int c = 0; c < 3; c++) {
+      printf("    %02x (%d)\n", slice->length[c], slice->length[c]);
+      for (int y = 0; y < (slice->length[c] + 15) / 16; y++) {
+        printf("    ");
+        for (int x = 0; x < 16 && y * 16 + x < slice->length[c]; x++) {
+          printf("%02x ", ((uint8_t *)(slice->data[c]))[y * 16 + x]);
+        }
+        printf("\n");
+      }
+    }
+    printf("-----------------------------------------------------------------\n");
+  }
 #endif
 
-	return (((uint64_t)idata) + 1 + lastlength) - ((uint64_t)_idata);
+  return (((uint64_t)idata) + 1 + lastlength) - ((uint64_t)_idata);
 }
 
 void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
-	int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX;
-	int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
+  int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX;
+  int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
 
-	mSliceDecoder(mMatrices,
-		job->coded_slices,
-		job->decoded_slice,
-		job->slices_x, job->slices_y,
-		job->video_data,
-		slice_width,
-		slice_height,
-		mParams.transform_params.wavelet_depth,
-		mDequant);
+  mSliceDecoder(mMatrices,
+    job->coded_slices,
+    job->decoded_slice,
+    job->slices_x, job->slices_y,
+    job->video_data,
+    slice_width,
+    slice_height,
+    mParams.transform_params.wavelet_depth,
+    mDequant);
 
 #ifdef DEBUG_OP_TRANSFORMED
-	{
-		std::stringstream ss;
-		ss << "transformed_dump_" << job->number << ".raw";
-		int f = open(ss.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
-		for (int c = 0; c < 3; c++) {
-			for (int y = 0; y < job->video_data[c]->height; y++) {
-				ssize_t s = write(f, (char *)&job->video_data[c]->data[y*job->video_data[c]->stride], job->video_data[c]->width*sizeof(int32_t));
-				if (s < 0) {
-					throw std::runtime_error("File Writing Error");
-				}
-			}
-		}
-	}
+  {
+    std::stringstream ss;
+    ss << "transformed_dump_" << job->number << ".raw";
+    int f = open(ss.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
+    for (int c = 0; c < 3; c++) {
+      for (int y = 0; y < job->video_data[c]->height; y++) {
+        ssize_t s = write(f, (char *)&job->video_data[c]->data[y*job->video_data[c]->stride], job->video_data[c]->width*sizeof(int32_t));
+        if (s < 0) {
+          throw std::runtime_error("File Writing Error");
+        }
+      }
+    }
+  }
 #endif /* DEBUG_OP_TRANSFORMED */
 
-	job->ostride[0] = _ostride[0];
-	job->ostride[1] = _ostride[1];
-	job->ostride[2] = _ostride[2];
+  job->ostride[0] = _ostride[0];
+  job->ostride[1] = _ostride[1];
+  job->ostride[2] = _ostride[2];
 
-	job->odata[0] = (char *)(_odata[0] + job->ostride[0] * job->target_y[0] + job->target_x[0]);
-	job->odata[1] = (char *)(_odata[1] + job->target_y[1] * job->ostride[1] + job->target_x[1]);
-	job->odata[2] = (char *)(_odata[2] + job->target_y[2] * job->ostride[2] + job->target_x[2]);
+  job->odata[0] = (char *)(_odata[0] + job->ostride[0] * job->target_y[0] + job->target_x[0]);
+  job->odata[1] = (char *)(_odata[1] + job->target_y[1] * job->ostride[1] + job->target_x[1]);
+  job->odata[2] = (char *)(_odata[2] + job->target_y[2] * job->ostride[2] + job->target_x[2]);
 
 #ifdef DEBUG_P_BLOCK
   if (job->number == DEBUG_P_JOB) {
@@ -1228,14 +1501,14 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
     printf("-----------------------------------------------------------------\n");
   }
 #endif
-	int C = mParams.colourise ? 1 : 3;
-	for (int c = 0; c < C; c++) {
-		int l;
-		for (l = 0; l < (int)mParams.transform_params.wavelet_depth - 1; l++) {
-			transforms_v[l](job->video_data[c]->data,
-				job->video_data[c]->stride,
-				job->video_data[c]->width,
-				job->video_data[c]->height);
+  int C = mParams.colourise ? 1 : 3;
+  for (int c = 0; c < C; c++) {
+    int l;
+    for (l = 0; l < (int)mParams.transform_params.wavelet_depth - 1; l++) {
+      transforms_v[l](job->video_data[c]->data,
+        job->video_data[c]->stride,
+        job->video_data[c]->width,
+        job->video_data[c]->height);
 
 #ifdef DEBUG_P_BLOCK
       if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
@@ -1247,10 +1520,10 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
       }
 #endif
 
-			transforms_h[l](job->video_data[c]->data,
-				job->video_data[c]->stride,
-				job->video_data[c]->width,
-				job->video_data[c]->height);
+      transforms_h[l](job->video_data[c]->data,
+        job->video_data[c]->stride,
+        job->video_data[c]->width,
+        job->video_data[c]->height);
 
 #ifdef DEBUG_P_BLOCK
       if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
@@ -1261,13 +1534,13 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
         printf("-----------------------------------------------------------------\n");
       }
 #endif
-		}
+    }
 
-		{
-			transforms_v[l](job->video_data[c]->data,
-				job->video_data[c]->stride,
-				job->video_data[c]->width,
-				job->video_data[c]->height);
+    {
+      transforms_v[l](job->video_data[c]->data,
+        job->video_data[c]->stride,
+        job->video_data[c]->width,
+        job->video_data[c]->height);
 
 #ifdef DEBUG_P_BLOCK
       if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
@@ -1279,136 +1552,136 @@ void VC2Decoder::Decode(JobData *job, uint16_t **_odata, int *_ostride) {
       }
 #endif
 
-			transforms_final(job->video_data[c]->data,
-				job->video_data[c]->stride,
-				job->odata[c],
-				job->ostride[c],
-				job->video_data[c]->width,
-				job->video_data[c]->height,
-				job->output_x[c],
-				job->output_y[c],
-				job->output_w[c],
-				job->output_h[c]);
+      transforms_final(job->video_data[c]->data,
+        job->video_data[c]->stride,
+        job->odata[c],
+        job->ostride[c],
+        job->video_data[c]->width,
+        job->video_data[c]->height,
+        job->output_x[c],
+        job->output_y[c],
+        job->output_w[c],
+        job->output_h[c]);
 
 #ifdef DEBUG_P_BLOCK
-			if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
-				printf("-----------------------------------------------------------------\n");
-				printf("Transform H%d\n", l);
-				printf("-----------------------------------------------------------------\n");
-				for (int y = DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H; y < DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H + DEBUG_P_SLICE_H; y++) {
-					int16_t *D = (int16_t *)&job->odata[DEBUG_P_COMP][2 * (y*job->ostride[DEBUG_P_COMP] + DEBUG_P_SLICE_X*DEBUG_P_SLICE_W - job->output_x[DEBUG_P_COMP])];
-					printf("  ");
-					for (int x = 0; x < DEBUG_P_SLICE_W; x++)
-						printf("%+6d ", D[x]);
-					printf("\n");
-				}
-				printf("-----------------------------------------------------------------\n");
-			}
+      if (job->number == DEBUG_P_JOB && c == DEBUG_P_COMP) {
+        printf("-----------------------------------------------------------------\n");
+        printf("Transform H%d\n", l);
+        printf("-----------------------------------------------------------------\n");
+        for (int y = DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H; y < DEBUG_P_SLICE_Y*DEBUG_P_SLICE_H + DEBUG_P_SLICE_H; y++) {
+          int16_t *D = (int16_t *)&job->odata[DEBUG_P_COMP][2 * (y*job->ostride[DEBUG_P_COMP] + DEBUG_P_SLICE_X*DEBUG_P_SLICE_W - job->output_x[DEBUG_P_COMP])];
+          printf("  ");
+          for (int x = 0; x < DEBUG_P_SLICE_W; x++)
+            printf("%+6d ", D[x]);
+          printf("\n");
+        }
+        printf("-----------------------------------------------------------------\n");
+      }
 #endif
-		}
-	}
-	if (mParams.colourise) {
-		if (mParams.colourise_quantiser) {
-			int min_q, max_q;
-			min_q = 255;
-			max_q = 0;
-			for (int N = 0; N < job->slices_y*job->slices_x; N++) {
-				if (job->coded_slices[N].qindex > max_q)
-					max_q = job->coded_slices[N].qindex;
-				if (job->coded_slices[N].qindex < min_q)
-					min_q = job->coded_slices[N].qindex;
-			}
+    }
+  }
+  if (mParams.colourise) {
+    if (mParams.colourise_quantiser) {
+      int min_q, max_q;
+      min_q = 255;
+      max_q = 0;
+      for (int N = 0; N < job->slices_y*job->slices_x; N++) {
+        if (job->coded_slices[N].qindex > max_q)
+          max_q = job->coded_slices[N].qindex;
+        if (job->coded_slices[N].qindex < min_q)
+          min_q = job->coded_slices[N].qindex;
+      }
 
 #ifdef DEBUG
-			writelog(LOG_INFO, "Quantisers: [%d, %d]\n", min_q, max_q);
+      writelog(LOG_INFO, "Quantisers: [%d, %d]\n", min_q, max_q);
 #endif
 
-			int q_mult_fact = ((1 << 10) - 1) / (max_q - min_q);
+      int q_mult_fact = ((1 << 10) - 1) / (max_q - min_q);
 
-			for (int c = 1; c < 3; c++) {
-				int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX / 2;
-				int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
-				for (int Y = 0; Y < job->slices_y; Y++) {
-					for (int X = 0; X < job->slices_x; X++) {
-						CodedSlice *slice = &job->coded_slices[Y*job->slices_x + X];
-						for (int y = 0; y < slice_height; y++) {
-							for (int x = 0; x < slice_width; x++) {
-								int yy = (Y*slice_height + y) - job->output_y[c];
-								int xx = (X*slice_width + x) - job->output_x[c];
-								if (yy >= 0 && yy < job->output_h[c] && xx >= 0 && xx < job->output_w[c])
-									((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (slice->qindex - min_q)*q_mult_fact;
-							}
-						}
-					}
-				}
-			}
-		}
-		else if (mParams.colourise_padding) {
-			int min_p, max_p;
-			min_p = 255 * mParams.slice_size_scalar;
-			max_p = 0;
-			for (int N = 0; N < job->slices_y*job->slices_x; N++) {
-				if (job->coded_slices[N].padding > max_p)
-					max_p = job->coded_slices[N].padding;
-				if (job->coded_slices[N].padding < min_p)
-					min_p = job->coded_slices[N].padding;
-			}
+      for (int c = 1; c < 3; c++) {
+        int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX / 2;
+        int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
+        for (int Y = 0; Y < job->slices_y; Y++) {
+          for (int X = 0; X < job->slices_x; X++) {
+            CodedSlice *slice = &job->coded_slices[Y*job->slices_x + X];
+            for (int y = 0; y < slice_height; y++) {
+              for (int x = 0; x < slice_width; x++) {
+                int yy = (Y*slice_height + y) - job->output_y[c];
+                int xx = (X*slice_width + x) - job->output_x[c];
+                if (yy >= 0 && yy < job->output_h[c] && xx >= 0 && xx < job->output_w[c])
+                  ((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (slice->qindex - min_q)*q_mult_fact;
+              }
+            }
+          }
+        }
+      }
+    }
+    else if (mParams.colourise_padding) {
+      int min_p, max_p;
+      min_p = 255 * mParams.slice_size_scalar;
+      max_p = 0;
+      for (int N = 0; N < job->slices_y*job->slices_x; N++) {
+        if (job->coded_slices[N].padding > max_p)
+          max_p = job->coded_slices[N].padding;
+        if (job->coded_slices[N].padding < min_p)
+          min_p = job->coded_slices[N].padding;
+      }
 
 #ifdef DEBUG
-			writelog(LOG_INFO, "Padding: [%d, %d]\n", min_p, max_p);
+      writelog(LOG_INFO, "Padding: [%d, %d]\n", min_p, max_p);
 #endif
 
-			int p_mult_fact = ((1 << 10) - 1) / (max_p - min_p);
+      int p_mult_fact = ((1 << 10) - 1) / (max_p - min_p);
 
-			for (int c = 1; c < 3; c++) {
-				int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX / 2;
-				int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
-				for (int Y = 0; Y < job->slices_y; Y++) {
-					for (int X = 0; X < job->slices_x; X++) {
-						CodedSlice *slice = &job->coded_slices[Y*job->slices_x + X];
-						for (int y = 0; y < slice_height; y++) {
-							for (int x = 0; x < slice_width; x++) {
-								int yy = (Y*slice_height + y) - job->output_y[c];
-								int xx = (X*slice_width + x) - job->output_x[c];
-								if (yy >= 0 && yy < job->output_h[c] && xx >= 0 && xx < job->output_w[c])
-									((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (slice->padding - min_p)*p_mult_fact;
-							}
-						}
-					}
-				}
-			}
-		}
-		else if (mParams.colourise_unpadded) {
-			for (int c = 1; c < 3; c++) {
-				int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX / 2;
-				int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
-				for (int Y = 0; Y < job->slices_y; Y++) {
-					for (int X = 0; X < job->slices_x; X++) {
-						CodedSlice *slice = &job->coded_slices[Y*job->slices_x + X];
-						for (int y = 0; y < slice_height; y++) {
-							for (int x = 0; x < slice_width; x++) {
-								int yy = (Y*slice_height + y) - job->output_y[c];
-								int xx = (X*slice_width + x) - job->output_x[c];
-								if (yy >= 0 && yy < job->output_h[c] && xx >= 0 && xx < job->output_w[c]) {
-									if (slice->padding == 0) {
-										((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (1 << 10) - 1;
-									}
-									else {
-										((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (1 << 9);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		else {
-			for (int c = 1; c < 3; c++) {
-				for (int y = 0; y < job->output_h[c]; y++)
-					for (int x = 0; x < job->output_w[c]; x++)
-						((uint16_t *)job->odata[c])[y*job->ostride[c] + x] = (1 << 9);
-			}
-		}
-	}
+      for (int c = 1; c < 3; c++) {
+        int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX / 2;
+        int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
+        for (int Y = 0; Y < job->slices_y; Y++) {
+          for (int X = 0; X < job->slices_x; X++) {
+            CodedSlice *slice = &job->coded_slices[Y*job->slices_x + X];
+            for (int y = 0; y < slice_height; y++) {
+              for (int x = 0; x < slice_width; x++) {
+                int yy = (Y*slice_height + y) - job->output_y[c];
+                int xx = (X*slice_width + x) - job->output_x[c];
+                if (yy >= 0 && yy < job->output_h[c] && xx >= 0 && xx < job->output_w[c])
+                  ((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (slice->padding - min_p)*p_mult_fact;
+              }
+            }
+          }
+        }
+      }
+    }
+    else if (mParams.colourise_unpadded) {
+      for (int c = 1; c < 3; c++) {
+        int slice_width = (mWidth + mParams.transform_params.slices_x - 1) / mSlicesX / 2;
+        int slice_height = (mHeight + mParams.transform_params.slices_y - 1) / mSlicesY;
+        for (int Y = 0; Y < job->slices_y; Y++) {
+          for (int X = 0; X < job->slices_x; X++) {
+            CodedSlice *slice = &job->coded_slices[Y*job->slices_x + X];
+            for (int y = 0; y < slice_height; y++) {
+              for (int x = 0; x < slice_width; x++) {
+                int yy = (Y*slice_height + y) - job->output_y[c];
+                int xx = (X*slice_width + x) - job->output_x[c];
+                if (yy >= 0 && yy < job->output_h[c] && xx >= 0 && xx < job->output_w[c]) {
+                  if (slice->padding == 0) {
+                    ((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (1 << 10) - 1;
+                  }
+                  else {
+                    ((uint16_t *)job->odata[c])[yy*job->ostride[c] + xx] = (1 << 9);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else {
+      for (int c = 1; c < 3; c++) {
+        for (int y = 0; y < job->output_h[c]; y++)
+          for (int x = 0; x < job->output_w[c]; x++)
+            ((uint16_t *)job->odata[c])[y*job->ostride[c] + x] = (1 << 9);
+      }
+    }
+  }
 }

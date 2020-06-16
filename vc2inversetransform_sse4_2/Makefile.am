@@ -5,9 +5,11 @@ libvc2invtransform_sse4_2_la_LDFLAGS = \
 	$(VC2HQDECODE_LDFLAGS) \
 	-lpthread
 
-libvc2invtransform_sse4_2_la_CPPFLAGS = $(VC2HQDECODE_CFLAGS) \
-	$(SSE4_2_FLAGS) \
+libvc2invtransform_sse4_2_la_CPPFLAGS = $(VC2HQDECODE_CPPFLAGS) \
 	-I$(top_srcdir)/vc2hqdecode
+
+libvc2invtransform_sse4_2_la_CXXFLAGS = $(VC2HQDECODE_CXXFLAGS) \
+	$(SSE4_2_FLAGS) 
 
 libvc2invtransform_sse4_2_la_SOURCES = \
 	invtransform_sse4_2.cpp \
@@ -15,8 +17,9 @@ libvc2invtransform_sse4_2_la_SOURCES = \
 	vlc_sse4_2.cpp
 
 noinst_HEADERS = \
-				dequantise_sse4_2.hpp \
-        invtransform_sse4_2.hpp \
-        legall_invtransform.hpp \
-        haar_invtransform.hpp \
-				vlc_sse4_2.hpp
+	dequantise_sse4_2.hpp \
+	invtransform_sse4_2.hpp \
+	legall_invtransform.hpp \
+	haar_invtransform.hpp \
+	vlc_sse4_2.hpp \
+        $(top_srcdir)/common/attributes.h

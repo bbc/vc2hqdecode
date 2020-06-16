@@ -27,9 +27,13 @@
 #include <cstdlib>
 #include <cstdio>
 
-VC2DecoderParseSegment parse_info(char *_data) {
+VC2DecoderParseSegment parse_info(char *_data, const char *_end) {
   VC2DecoderParseSegment r;
   uint8_t *data = (uint8_t *)_data;
+  const uint8_t *end = (const uint8_t *)_end;
+
+  if (data + 13 > end)
+    throw VC2DECODER_CODEROVERRUN;
 
   if (data[0] != 0x42 || data[1] != 0x42 || data[2] != 0x43 || data[3] != 0x44)
     throw VC2DECODER_NOTPARSEINFO;
@@ -57,6 +61,9 @@ VC2DecoderParseSegment parse_info(char *_data) {
   else
     r.prev_header = NULL;
   r.data_length = next_parse_offset - 13;
+
+  if (_data + r.data_length > _end)
+    throw VC2DECODER_CODEROVERRUN;
 
   return r;
 }

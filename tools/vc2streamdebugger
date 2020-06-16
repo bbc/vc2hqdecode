@@ -129,31 +129,48 @@ def print_formated_data(data):
         elif (len(d) == 2):
             print "    %*s :  %*s" % (-l[0], d[0], l[1], d[1])
 
-def process_hq_transform_parameters(stream, offset, length):
+def process_hq_transform_parameters(stream, offset, length, mvn):
     dec = Decoder(stream, offset, length)
     data = []
     data.append(("Transform Parameters",))
+    data.append(("v" + str(mvn) + " syntax",))
     data.append(())
     slices_x = 0
     slices_y = 0
     prefix   = 0
     scalar   = 1
+    horiz_depth = 0
     try:
-        data.append(("Wavelet", str(dec.decode_uint())))
+        wvlt = str(dec.decode_uint())
         depth = dec.decode_uint()
+        if mvn >= 3:
+            if dec.decode_bool():
+                wvlt += " (" + str(dec.decode_uint()) + "ho)"
+            if dec.decode_bool():
+                horiz_deph = dec.decode_uint()
         slices_x = dec.decode_uint()
         slices_y = dec.decode_uint()
         prefix   = dec.decode_uint()
         scalar   = dec.decode_uint()
-        data.append(("Depth", str(depth)))
+        data.append(("Wavelet", wvlt))
+        if mvn < 3:
+            data.append(("Depth", str(depth)))
+        else:
+            data.append(("Depth", str(depth) + " (" + str(horiz_depth) + "ho)"))
         data.append(("Slices X", str(slices_x)))
         data.append(("Slices Y", str(slices_y)))
         data.append(("Prefix Bytes", str(prefix)))
         data.append(("Slice Size Scalar", str(scalar)))
         custom_matrix_flag = dec.decode_bool()
         if (custom_matrix_flag):
-            data.append(("Custom Quantisation Matrix LL", str(dec.decode_uint())))
-            for level in range(1,depth):
+            if horiz_depth == 0:
+                data.append(("Custom Quantisation Matrix LL", str(dec.decode_uint())))
+            else:
+                data.append(("Custom Quantisation Matrix L", str(dec.decode_uint())))
+                for level in range(1,horiz_depth):
+                    data.append(("Custom Quantisation Matrix Level %d" % (level,)))
+                    data.append(("    H", str(dec.decode_uint())))
+            for level in range(horiz_depth+1,depth):
                 data.append(("Custom Quantisation Matrix Level %d" % (level,)))
                 data.append(("    HL", str(dec.decode_uint())))
                 data.append(("    LH", str(dec.decode_uint())))
@@ -164,13 +181,13 @@ def process_hq_transform_parameters(stream, offset, length):
     print_formated_data(data)
     return (dec.offset, slices_x, slices_y, prefix, scalar)
 
-def process_hq_slices(stream, offset, length, slices_x, slices_y, prefix, scalar):
+def process_hq_slices(stream, offset, length, n_slices, prefix, scalar):
     end = offset + length
     qi = []
     l = []
     error = False
     try:
-        for n in range(0, slices_x*slices_y):
+        for n in range(0, n_slices):
             L = []
             offset += prefix
             if offset > end:
@@ -205,7 +222,7 @@ def process_hq_slices(stream, offset, length, slices_x, slices_y, prefix, scalar
     if error:
         print "Overrun after %d slices" % (n, )
 
-def process_hq_picture(stream, offset, length, verbose):
+def process_hq_picture(stream, offset, length, verbose, mvn):
     end = offset + length
     data = []
     if (length < 5):
@@ -218,20 +235,63 @@ def process_hq_picture(stream, offset, length, verbose):
                                        (stream[offset + 3] <<  0))))
 
     print_formated_data(data)
-    (offset, slices_x, slices_y, prefix, scalar) = process_hq_transform_parameters(stream, offset + 4, length - 4)
+    (offset, slices_x, slices_y, prefix, scalar) = process_hq_transform_parameters(stream, offset + 4, length - 4, mvn)
 
     print
     print "    Slice Data Starts At: 0x%08x" % (offset,)
     print
 
     if verbose:
-        process_hq_slices(stream, offset, end - offset, slices_x, slices_y, prefix, scalar)
+        process_hq_slices(stream, offset, end - offset, slices_x*slices_y, prefix, scalar)
+
+def process_hq_fragment(stream, offset, length, verbose, mvn, transform_parameters=None):
+    end = offset + length
+    data = []
+    if mvn < 3:
+        data.append(("Warning: fragments not allowed in version %d" % mvn,))
+    if (length < 9):
+        print "    !!  Error: Short fragment"
+        return
+
+    data.append(("Picture Number", str((stream[offset + 0] << 24) +
+                                       (stream[offset + 1] << 16) +
+                                       (stream[offset + 2] <<  8) +
+                                       (stream[offset + 3] <<  0))))
+    fragment_length = (stream[offset + 4] << 8) + (stream[offset + 5] << 0)
+    data.append(("Fragment Length", str(fragment_length)))
+    slice_count = (stream[offset + 6] << 8) + (stream[offset + 7] << 0)
+    data.append(("Slices", str(slice_count)))
+
+    if (slice_count == 0):
+        print_formated_data(data)
+        return process_hq_transform_parameters(stream, offset + 8, length - 8, mvn)
+    else:
+        data.append(("Slice X Offset", str((stream[offset + 8] << 8) +
+                                        (stream[offset + 9] << 0))))
+        data.append(("Slice Y Offset", str((stream[offset + 10] << 8) +
+                                        (stream[offset + 11] << 0))))
+        print_formated_data(data)
+
+        offset += 12
+
+        print
+        print "    Slice Data Starts At: 0x%08x" % (offset,)
+        print
+
+        if verbose:
+            if transform_parameters is not None:
+                (_, slices_x, slices_y, prefix, scalar) = transform_parameters
+                process_hq_slices(stream, offset, fragment_length, slice_count, prefix, scalar)
+            else:
+                print "WARNING: Cannot process slice data without transform_parameters"
+        return transform_parameters
 
 def process_sequence_header(stream, offset, length, verbose):
     dec = Decoder(stream, offset, length)
     data = []
     try:
-        data.append(("Major Version", str(dec.decode_uint())))
+        mvn = dec.decode_uint()
+        data.append(("Major Version", str(mvn)))
         data.append(("Minor Version", str(dec.decode_uint())))
         data.append(("Profile", str(dec.decode_uint())))
         data.append(("Level", str(dec.decode_uint())))
@@ -255,6 +315,8 @@ def process_sequence_header(stream, offset, length, verbose):
             data.append(("Custom Frame Rate",))
             index = dec.decode_uint()
             data.append(("index", str(index)))
+            if (mvn < 3 and index > 11):
+                data.append(("WARNING: Frame Rate Invalid for this Major Version",))
             if (index == 0):
                 data.append(("Frame Rate", str(dec.decode_uint()) + "/" + str(dec.decode_uint())))
             data.append(())
@@ -275,6 +337,8 @@ def process_sequence_header(stream, offset, length, verbose):
         if (dec.decode_bool()):
             data.append(("Custom Signal Range",))
             index = dec.decode_uint()
+            if (mvn < 3 and index > 4):
+                data.append(("WARNING: Signal range invalid for this Major Version",))
             data.append(("index", str(index)))
             if (index == 0):
                 data.append(("Luma Offset", str(dec.decode_uint())))
@@ -285,14 +349,25 @@ def process_sequence_header(stream, offset, length, verbose):
         if (dec.decode_bool()):
             data.append(("Custom Color Spec",))
             index = dec.decode_uint()
+            if (mvn < 3 and index > 4):
+                data.append(("WARNING: Color spec invalid for this Major Version",))
             data.append(("index", str(index)))
             if (index == 0):
                 if (dec.decode_bool()):
-                    data.append(("Custom Color Primaries", str(dec.decode_uint())))
+                    index = dec.decode_uint()
+                    if (mvn < 3 and index > 3):
+                        data.append(("WARNING: Color primaries invalid for this Major Version",))
+                    data.append(("Custom Color Primaries", str(index)))
                 if (dec.decode_bool()):
-                    data.append(("Custom Color Matrix", str(dec.decode_uint())))
+                    index = dec.decode_uint()
+                    if (mvn < 3 and index > 3):
+                        data.append(("WARNING: Color Matrix invalid for this Major Version",))
+                    data.append(("Custom Color Matrix", str(index)))
                 if (dec.decode_bool()):
-                    data.append(("Custom Transfer Function", str(dec.decode_uint())))
+                    index = dec.decode_uint()
+                    if (mvn < 3 and index > 3):
+                        data.append(("WARNING: Transfer function invalid for this Major Version",))
+                    data.append(("Custom Transfer Function", str(index)))
             data.append(())
         data.append(("Picture Coding Mode", str(dec.decode_uint())))
     except:
@@ -302,13 +377,15 @@ def process_sequence_header(stream, offset, length, verbose):
     else:
         print_formated_data(data)
 
-def parse_data_unit(stream, offset, code, length, verbose):
+    return mvn
+
+def parse_data_unit(stream, offset, code, length, verbose, mvn, transform_parameters):
     if code == 0x00:
         #Sequence Header
         print
         print "    -- Sequence Header -- "
         print "      %d bytes of coded parameters" % (length,)
-        process_sequence_header(stream, offset, length, verbose)
+        mvn = process_sequence_header(stream, offset, length, verbose)
     elif code == 0x10:
         #End of Sequence
         print
@@ -337,15 +414,27 @@ def parse_data_unit(stream, offset, code, length, verbose):
         print
         print "    -- High Quality Picture -- "
         print "      %d bytes of coded data" % (length,)
-        process_hq_picture(stream, offset, length, verbose)
+        process_hq_picture(stream, offset, length, verbose, mvn)
+    elif code == 0xCC:
+        print
+        print "    -- Low Delay Fragment -- "
+        print "      %d bytes of coded data" % (length,)
+    elif code == 0xEC:
+        print
+        print "    -- High Quality Fragment -- "
+        print "      %d bytes of coded data" % (length,)
+        transform_parameters = process_hq_fragment(stream, offset, length, verbose, mvn, transform_parameters)
     else:
         print
         print "    -- Unknown Parse Code -- "
         print "      %d bytes of mysterious data" % (length,)
+    return (mvn, transform_parameters)
 
 def parse_vc2_stream(stream, verbose):
     offset = 0
     garbage = 0
+    mvn = 0
+    transform_parameters = None
     while (offset < len(stream)):
         data = parse_info(stream, offset, verbose)
         if (data is not None):
@@ -364,7 +453,7 @@ def parse_vc2_stream(stream, verbose):
                 print "    next_parse_offset Error: %s" % (data['next_parse_offset_error'],)
             offset += 13
 
-            parse_data_unit(stream, offset, data['parse_code'], data['next_parse_offset'] - 13, verbose)
+            (mvn, transform_parameters) = parse_data_unit(stream, offset, data['parse_code'], data['next_parse_offset'] - 13, verbose, mvn, transform_parameters)
             offset += data['next_parse_offset'] - 13 if (data['next_parse_offset'] > 13) else 0
             print
         else:
