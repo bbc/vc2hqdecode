@@ -23,8 +23,8 @@
  * For more information, contact us at ipstudio@bbc.co.uk.
  *****************************************************************************/
 
-#ifndef __VC2HQDECODE_H__
-#define __VC2HQDECODE_H__
+#ifndef VC2HQDECODE_VC2HQDECODE_H
+#define VC2HQDECODE_VC2HQDECODE_H
 
 #include <stdint.h>
 
@@ -72,7 +72,7 @@ typedef void * VC2DecoderHandle;
 /**
  * This structre is used to configure the user configurable parameters for a decoder.
  */
-typedef struct _VC2DecoderParamsUser {
+typedef struct VC2DecoderParamsUser {
   /**
    * set the number of threads the decoder will use internally. The current implementation does not support
    * numbers of threads greater than 16. The decoded is aggressively multithreaded and will distribute work
@@ -116,13 +116,13 @@ typedef struct _VC2DecoderParamsUser {
  *
  *******************************************************************************/
 
-enum _VC2DecoderSubsamplingFormat {
+enum VC2DecoderSubsamplingFormat {
   VC2DECODER_CDS_420 = 0,
   VC2DECODER_CDS_422 = 1,
   VC2DECODER_CDS_444 = 2
 };
 
-enum _VC2DecoderFrameRate {
+enum VC2DecoderFrameRate {
   VC2DECODER_FR_CUSTOM = 0,
   VC2DECODER_FR_24000_1001 = 1,
   VC2DECODER_FR_24 = 2,
@@ -142,7 +142,7 @@ enum _VC2DecoderFrameRate {
   VC2DECODER_FR_120 = 16
 };
 
-enum _VC2DecoderPresetSignalRange {
+enum VC2DecoderPresetSignalRange {
   VC2DECODER_PSR_CUSTOM   = 0,
   VC2DECODER_PSR_8BITFULL = 1,
   VC2DECODER_PSR_8BITVID  = 2,
@@ -150,7 +150,7 @@ enum _VC2DecoderPresetSignalRange {
   VC2DECODER_PSR_12BITVID = 4
 };
 
-enum _VC2DecoderBaseVideoFormat {
+enum VC2DecoderBaseVideoFormat {
   VC2DECODER_BVF_CUSTOM     = 0,
   VC2DECODER_BVF_QSIF525    = 1,
   VC2DECODER_BVF_QCIF       = 2,
@@ -178,12 +178,12 @@ enum _VC2DecoderBaseVideoFormat {
   VC2DECODER_BVF_NUM
 };
 
-enum _VC2DecoderPictureCodingMode {
+enum VC2DecoderPictureCodingMode {
   VC2DECODER_PCM_FRAME = 0,
   VC2DECODER_PCM_FIELD = 1,
 };
 
-enum _VC2DecoderWaveletFilterType {
+enum VC2DecoderWaveletFilterType {
   VC2DECODER_WFT_DESLAURIERS_DUBUC_9_7  = 0,
   VC2DECODER_WFT_LEGALL_5_3             = 1,
   VC2DECODER_WFT_DESLAURIERS_DUBUC_13_7 = 2,
@@ -195,7 +195,7 @@ enum _VC2DecoderWaveletFilterType {
   VC2DECODER_WFT_NUM
 };
 
-enum _VC2DecoderPixelAspect {
+enum VC2DecoderPixelAspect {
   VC2DECODER_PAR_CUSTOM = 0,
   VC2DECODER_PAR_1_1 = 1,
   VC2DECODER_PAR_10_11 = 2,
@@ -205,7 +205,7 @@ enum _VC2DecoderPixelAspect {
   VC2DECODER_PAR_4_3 = 6,
 };
 
-enum _VC2DecoderColorSpec {
+enum VC2DecoderColorSpec {
   VC2DECODER_CSP_CUSTOM    = 0,
   VC2DECODER_CSP_SDTV525   = 1,
   VC2DECODER_CSP_SDTV625   = 2,
@@ -216,7 +216,7 @@ enum _VC2DecoderColorSpec {
   VC2DECODER_CSP_HDRTV_HLG = 7
 };
 
-enum _VC2DecoderColorPrimaries {
+enum VC2DecoderColorPrimaries {
   VC2DECODER_CPR_HDTV    = 0,
   VC2DECODER_CPR_SDTV525 = 1,
   VC2DECODER_CPR_SDTV625 = 2,
@@ -224,7 +224,7 @@ enum _VC2DecoderColorPrimaries {
   VC2DECODER_CPR_UHDTV   = 4
 };
 
-enum _VC2DecoderColorMatrix {
+enum VC2DecoderColorMatrix {
   VC2DECODER_CMA_HDTV       = 0,
   VC2DECODER_CMA_SDTV       = 1,
   VC2DECODER_CMA_REVERSIBLE = 2,
@@ -232,7 +232,7 @@ enum _VC2DecoderColorMatrix {
   VC2DECODER_CMA_UHDTV      = 4
 };
 
-enum _VC2DecoderTransferFunction {
+enum VC2DecoderTransferFunction {
   VC2DECODER_TRF_TVGAMMA  = 0,
   VC2DECODER_TRF_EXTGAMUT = 1,
   VC2DECODER_TRF_LINEAR   = 2,
@@ -241,7 +241,7 @@ enum _VC2DecoderTransferFunction {
   VC2DECODER_TRF_HLG      = 5
 };
 
-typedef struct _VC2DecoderVideoFormat {
+typedef struct VC2DecoderVideoFormat {
   uint32_t base_video_format;
 
 
@@ -299,7 +299,7 @@ typedef struct _VC2DecoderVideoFormat {
 
 #define MAX_DWT_DEPTH 8
 
-typedef struct _VC2DecoderTransformParams {
+typedef struct VC2DecoderTransformParams {
   uint32_t wavelet_index;
   uint32_t wavelet_depth;
 
@@ -327,7 +327,7 @@ typedef struct _VC2DecoderTransformParams {
  * the full details decoded from the most recent Sequence Header and
  * picture.
  */
-typedef struct _VC2DecoderSequenceInfo {
+typedef struct VC2DecoderSequenceInfo {
   VC2DecoderVideoFormat     video_format;
   uint32_t picture_coding_mode;
   VC2DecoderTransformParams transform_params;
@@ -349,7 +349,7 @@ typedef struct _VC2DecoderSequenceInfo {
  * It is the responsibility of the host application to take these values into account
  * when allocating memory for the decoded pictures to be written into.
  */
-typedef struct _VC2DecoderOutputFormat {
+typedef struct VC2DecoderOutputFormat {
   /** The width of the entire frame in pixels */
   int width;
 
@@ -375,7 +375,7 @@ typedef struct _VC2DecoderOutputFormat {
  * Defined values for return codes from the library functions. Success codes are
  * greater than or equal to 0, errors are less than or equal to zero.
  */
-typedef enum _VC2DecoderResult {
+typedef enum VC2DecoderResult {
   /** Success */
   VC2DECODER_OK = 0,
 
@@ -422,7 +422,7 @@ typedef enum _VC2DecoderResult {
  *
  * The default behaviour if no logger functions are provided will be to log to standard error.
  */
-typedef struct _VC2DecoderLoggers {
+typedef struct VC2DecoderLoggers {
   void (*error)(char *, void *);
   void (*warn)(char *, void *);
   void (*info)(char *, void *);
@@ -455,7 +455,7 @@ VC2HQDECODE_API void vc2decode_init(void);
  *
  * The paramter is a struct of type VC2DecoderLoggers
  */
-VC2HQDECODE_API void vc2decoder_init_logging(VC2DecoderLoggers);
+VC2HQDECODE_API void vc2decode_init_logging(VC2DecoderLoggers);
 
 /**
  * This function is used by the host application to create a new decoder, which
@@ -592,4 +592,4 @@ VC2HQDECODE_API VC2DecoderResult vc2decode_extract_aux(VC2DecoderHandle handle, 
 };
 #endif
 
-#endif /* __VC2HQDECODE_H__ */
+#endif /* VC2HQDECODE_VC2HQDECODE_H */
